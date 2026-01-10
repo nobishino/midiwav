@@ -46,6 +46,7 @@ func TestMIDIToWAVE(t *testing.T) {
 				if err := os.WriteFile(goldenPath, got, 0644); err != nil {
 					t.Fatalf("failed to update golden file: %v", err)
 				}
+				t.Logf("updated golden file: %s", goldenPath)
 				return
 			}
 
