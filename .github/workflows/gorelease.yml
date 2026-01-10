@@ -3,7 +3,7 @@ name: release
 on:
   push:
     tags:
-      - "commit-*"
+      - "v*.*.*"
 
 permissions:
   contents: write
