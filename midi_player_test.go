@@ -15,7 +15,6 @@ func TestMIDIToWAVE(t *testing.T) {
 		"issue0001_ng1",
 		"issue0001_ng2",
 	}
-	// "testdata/issue0002.mid",
 	for _, filename := range filenames {
 		t.Run(filename, func(t *testing.T) {
 			f, err := os.Open(filepath.Join("testdata", filename+".mid"))
@@ -42,14 +41,10 @@ func TestMIDIToWAVE(t *testing.T) {
 }
 
 func TestViewIssue0001MIDI(t *testing.T) {
-
 	filenames := []string{
-		// "issue0001_ok1",
 		"issue0001_ok2",
-		// "issue0001_ng1",
 		"issue0001_ng2",
 	}
-	// "testdata/issue0002.mid",
 	for _, filename := range filenames {
 		t.Run(filename, func(t *testing.T) {
 			f, err := os.Open(filepath.Join("testdata", filename+".mid"))

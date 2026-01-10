@@ -9,24 +9,6 @@ import (
 	"gitlab.com/gomidi/midi/v2/smf"
 )
 
-type Player struct {
-	smf         *smf.SMF
-	bpm         int
-	metricTicks smf.MetricTicks
-}
-
-func NewPlayer(smfData *smf.SMF) (*Player, error) {
-	metricTicks, ok := smfData.TimeFormat.(smf.MetricTicks)
-	if !ok {
-		return nil, errors.New("only MetricTicks time format is supported")
-	}
-	return &Player{
-		bpm:         120, // TODO: MIDIファイルからBPMを取得する
-		metricTicks: metricTicks,
-		smf:         smfData,
-	}, nil
-}
-
 func midiToWAVE(dst io.Writer, src io.Reader) error {
 	smfData, err := smf.ReadFrom(src)
 	if err != nil {
@@ -48,10 +30,6 @@ func smfToPCMArray(smfData *smf.SMF) ([]int16, error) {
 		return nil, errors.New("only MetricTicks time format is supported")
 	}
 	fmt.Println("MetricTicks:", metricTicks)
-	// if trackNum != 1 {
-	// 	return nil, errors.New(fmt.Sprintf("SMF format is not single track. got %d tracks", trackNum))
-	// }
-	// track := smfData.Tracks[0]
 	trackNum := len(smfData.Tracks)
 	sampleTracks := make([][]float64, 0, trackNum)
 	var bpm float64
@@ -86,10 +64,6 @@ func smfToPCMArray(smfData *smf.SMF) ([]int16, error) {
 						attack[k]--
 					}
 					deviation += amplitude * float64(velocity) * squareWave(2*math.Pi*sampleTime(sampleIndex)*frequencyFromKey(k))
-					// deviation += amplitude * float64(velocity) * math.Sin(2*math.Pi*sampleTime(sampleIndex)*frequencyFromKey(k))
-					// if velocity > 0 {
-					// 	fmt.Printf("Sample %d: Note %d On Velocity %d\n", sampleIndex, k, velocity)
-					// }
 				}
 				samples = append(samples, deviation)
 				sampleIndex++ // sampleIndex == すでに出力し終わったサンプル数になる
@@ -97,22 +71,11 @@ func smfToPCMArray(smfData *smf.SMF) ([]int16, error) {
 			// player stateの更新
 			keyToVelocity[key] = velocity
 			time += deltaTime
-			// fmt.Println("  time:", time, " sampleIndex:", sampleIndex, noteWithPositiveVelocity(keyToVelocity), "notes on")
 		}
 		sampleTracks = append(sampleTracks, samples)
 	}
 	return summarizeSamples(sampleTracks), nil
 }
-
-// func noteWithPositiveVelocity(keyToVelocity map[uint8]uint8) int {
-// 	count := 0
-// 	for _, v := range keyToVelocity {
-// 		if v > 0 {
-// 			count++
-// 		}
-// 	}
-// 	return count
-// }
 
 func sampleTime(sampleIndex int) float64 {
 	return float64(sampleIndex) / sampleRate
