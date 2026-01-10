@@ -83,6 +83,24 @@ func getConfigPath() (string, error) {
 }
 ```
 
+**Problems when not using xdg library:**
+
+1. **Missing environment variable checks**: On Windows, `APPDATA` is rarely unset, but when it is, you need to implement fallback handling yourself.
+
+2. **Path handling with spaces**: macOS paths like `Library/Application Support` contain spaces and require careful handling to avoid edge case bugs.
+
+3. **XDG_CONFIG_HOME fallback**: On Linux systems, you must manually implement the default value (`~/.config`) when `XDG_CONFIG_HOME` is not set.
+
+4. **Directory creation**: You must implement logic to create the configuration directory if it doesn't exist. The xdg library's `ConfigFile()` automatically creates directories.
+
+5. **Error handling**: Without proper error handling for `os.UserHomeDir()`, unexpected panics can occur.
+
+6. **Maintenance burden**: When new platform support or specification changes occur in the future, you must update the code yourself.
+
+7. **Testing complexity**: Testing platform-specific path handling requires writing test cases for each OS yourself.
+
+Using the xdg library solves all these problems at the library level, resulting in simpler and more robust code.
+
 ### 3. Configuration File Search Order (Recommended)
 
 For flexibility, search for configuration files in the following order:
