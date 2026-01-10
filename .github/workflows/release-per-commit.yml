@@ -39,7 +39,7 @@ jobs:
           CGO_ENABLED: 0
         run: |
           set -eux
-          APP_NAME="yourapp"
+          APP_NAME="midiwav"
           OUT_DIR="dist"
           mkdir -p "${OUT_DIR}"
           SHA="${GITHUB_SHA::7}"
