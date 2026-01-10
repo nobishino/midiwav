@@ -1,12 +1,16 @@
 package main
 
 import (
+	"bytes"
+	"flag"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"gitlab.com/gomidi/midi/v2/smf"
 )
+
+var update = flag.Bool("update", false, "update golden files")
 
 func TestMIDIToWAVE(t *testing.T) {
 	filenames := []string{
@@ -25,17 +29,34 @@ func TestMIDIToWAVE(t *testing.T) {
 			t.Cleanup(func() {
 				f.Close()
 			})
-			dst, err := os.Create(filepath.Join("testdata", filename+".wav"))
-			if err != nil {
-				t.Fatalf("failed to open WAVE file: %v", err)
-			}
-			t.Cleanup(func() {
-				dst.Close()
-			})
 
-			err = midiToWAVE(dst, f)
+			// Generate WAV output to a buffer
+			var buf bytes.Buffer
+			err = midiToWAVE(&buf, f)
 			if err != nil {
 				t.Fatalf("MIDIToWAVE failed: %v", err)
+			}
+
+			// Get the generated output
+			got := buf.Bytes()
+			goldenPath := filepath.Join("testdata", filename+".wav")
+
+			// Update mode: write the output to the golden file
+			if *update {
+				if err := os.WriteFile(goldenPath, got, 0644); err != nil {
+					t.Fatalf("failed to update golden file: %v", err)
+				}
+				return
+			}
+
+			// Compare mode: read the golden file and compare
+			want, err := os.ReadFile(goldenPath)
+			if err != nil {
+				t.Fatalf("failed to read golden file: %v", err)
+			}
+
+			if !bytes.Equal(got, want) {
+				t.Errorf("WAV output differs from golden file %s\ngot %d bytes, want %d bytes", goldenPath, len(got), len(want))
 			}
 		})
 	}
