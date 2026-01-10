@@ -67,17 +67,13 @@ func smfToPCMArray(smfData *smf.SMF) ([]int16, error) {
 				fmt.Printf("Set Tempo %f BPM\n", bpm)
 			}
 			var key, velocity uint8
-			switch {
-			case ev.Message.GetNoteEnd(nil, &key):
-			case ev.Message.GetNoteOn(nil, &key, &velocity):
+			switch msg := ev.Message; {
+			case msg.GetNoteEnd(nil, &key):
+			case msg.GetNoteOn(nil, &key, &velocity):
 				attack[key] = 1000 // 発音直後の音としてマーク
-			default:
-				continue // その他のイベントは無視
+			case bpm == 0:
+				continue // bpm == 0 の状態では時計を進めないし、音も鳴らさない
 			}
-			if bpm == 0 {
-				panic("bpm is not set before note events")
-			}
-			// deltaTime 前回のイベントからの経過時間
 			deltaTime := float64(ev.Delta) * 60 / (bpm * float64(metricTicks))
 			for sampleTime(sampleIndex) < time+deltaTime {
 				// サンプルの値を出力する
