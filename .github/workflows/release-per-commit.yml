@@ -50,7 +50,7 @@ jobs:
           mkdir -p "${OUT_DIR}"
           SHA="${GITHUB_SHA::7}"
           OUT="${OUT_DIR}/${APP_NAME}_${{ matrix.goos }}_${{ matrix.goarch }}_${SHA}${{ matrix.ext }}"
-          go build -trimpath -ldflags "-s -w" -o "${OUT}" ./...
+          go build -trimpath -ldflags "-s -w" -o "${OUT}" .
 
       - name: Create/Update Release and upload asset
         uses: softprops/action-gh-release@v2
