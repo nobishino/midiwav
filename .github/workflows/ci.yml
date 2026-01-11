@@ -24,10 +24,10 @@ jobs:
 
       - name: Check go fmt
         run: |
-          fmt_output=$(go fmt ./...)
-          if [ -n "$fmt_output" ]; then
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
             echo "The following files are not formatted correctly:"
-            echo "$fmt_output"
+            echo "$unformatted"
             exit 1
           fi
 
