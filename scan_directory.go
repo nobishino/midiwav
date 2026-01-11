@@ -7,8 +7,8 @@ import (
 )
 
 // hoge.midであって、次のいずれかに該当するMIDIファイルを探し、返却する。
-//    - hoge.wavが存在しない
-//    - hoge.midよりhoge.wavの方が古い
+//   - hoge.wavが存在しない
+//   - hoge.midよりhoge.wavの方が古い
 func findUnprocessedMIDIFiles(dir string) ([]string, error) {
 	var unprocessed []string
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
