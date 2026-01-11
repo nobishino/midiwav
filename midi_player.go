@@ -41,11 +41,10 @@ func smfToPCMArray(smfData *smf.SMF) ([]int16, error) {
 		attack := make(map[uint8]uint16)             // 発音直後の音かどうか 音の連打を表現するために使ってみる
 		samples := make([]float64, 0, sampleRate*60) // heuristic: 1分間のサンプル分のcapを事前確保
 		for _, ev := range track {
-			if ev.Message.GetMetaTempo(&bpm) {
-				fmt.Printf("Set Tempo %f BPM\n", bpm)
-			}
 			var key, velocity uint8
 			switch msg := ev.Message; {
+			case msg.GetMetaTempo(&bpm):
+				fmt.Printf("Set Tempo to %f BPM(MetaTempo)\n", bpm)
 			case msg.GetNoteEnd(nil, &key):
 			case msg.GetNoteOn(nil, &key, &velocity):
 				attack[key] = 1000 // 発音直後の音としてマーク
