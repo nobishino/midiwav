@@ -3,10 +3,13 @@ on:
   push:
     branches: ["main"]
 jobs:
-  deploy:
+  tagpr:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
-      - uses: Songmu/tagpr@main
+      - uses: Songmu/tagpr@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
