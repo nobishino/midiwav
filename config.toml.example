@@ -1,34 +1,14 @@
-# Setup
+# Example configuration file for midiwav
+# To use this configuration, save it to a file (e.g., config.toml) and run:
+# midiwav -config /path/to/config.toml
 
-## Configuration File
-
-Create a TOML configuration file with the following format:
-
-```toml
+# First target: A directory with Discord webhook
 [[target]]
 dir = "/abs/path/to/dir1"
 discord_webhook_url = "https://discord.com/api/webhooks/XXX/YYY"
 
+# Second target: A directory with recursive search, no Discord posting
 [[target]]
 dir = "/abs/path/to/dir2"
 recursive = true # trueの場合、配下のディレクトリを再帰的に検索します。デフォルトはfalseです。
 # discord_webhook_url を省略すると Discord へ投稿しません。
-```
-
-## Running
-
-```sh
-midiwav -config /path/to/config.toml
-```
-
-## Testing
-
-Run tests:
-```sh
-go test
-```
-
-Update golden files (testdata/*.wav) with new output:
-```sh
-go test -update
-```
