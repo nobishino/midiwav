@@ -36,3 +36,6 @@ samples/*
 
 # MacOS
 .DS_Store
+
+# Build artifact
+midiwav
