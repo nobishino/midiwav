@@ -39,5 +39,12 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("no targets defined in config file")
 	}
 	
+	// Validate targets
+	for i, target := range config.Targets {
+		if target.Dir == "" {
+			return nil, fmt.Errorf("target %d: dir is required", i)
+		}
+	}
+	
 	return &config, nil
 }

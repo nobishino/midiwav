@@ -69,24 +69,35 @@ func (e *executer) processTarget(target Target) error {
 	log.Printf("Found %d unprocessed MIDI files in %s.\n", len(unprocessed), target.Dir)
 
 	for _, srcPath := range unprocessed {
-		fmt.Println("Processing:", srcPath)
-		srcMIDI, err := os.Open(srcPath)
-		if err != nil {
-			log.Fatal(err)
+		if err := processFile(srcPath, target.DiscordWebhookURL); err != nil {
+			log.Printf("Error processing %s: %v", srcPath, err)
+			continue
 		}
-		defer srcMIDI.Close()
-		dstWAV, err := os.Create(strings.TrimSuffix(srcPath, ".mid") + ".wav")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer dstWAV.Close()
-		if err := midiToWAVE(dstWAV, srcMIDI); err != nil {
-			log.Fatal(err)
-		}
-		if target.DiscordWebhookURL != "" {
-			if err := postToDiscord(target.DiscordWebhookURL, srcMIDI, dstWAV); err != nil {
-				log.Println(err)
-			}
+	}
+	return nil
+}
+
+func processFile(srcPath string, discordWebhookURL string) error {
+	fmt.Println("Processing:", srcPath)
+	srcMIDI, err := os.Open(srcPath)
+	if err != nil {
+		return fmt.Errorf("failed to open MIDI file: %w", err)
+	}
+	defer srcMIDI.Close()
+	
+	dstWAV, err := os.Create(strings.TrimSuffix(srcPath, ".mid") + ".wav")
+	if err != nil {
+		return fmt.Errorf("failed to create WAV file: %w", err)
+	}
+	defer dstWAV.Close()
+	
+	if err := midiToWAVE(dstWAV, srcMIDI); err != nil {
+		return fmt.Errorf("failed to convert MIDI to WAV: %w", err)
+	}
+	
+	if discordWebhookURL != "" {
+		if err := postToDiscord(discordWebhookURL, srcMIDI, dstWAV); err != nil {
+			log.Println(err)
 		}
 	}
 	return nil

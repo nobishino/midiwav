@@ -59,6 +59,14 @@ recursive = true
 			wantTargets: 0,
 			wantErr:     true,
 		},
+		{
+			name: "target with empty dir",
+			content: `[[target]]
+dir = ""
+`,
+			wantTargets: 0,
+			wantErr:     true,
+		},
 	}
 
 	for _, tt := range tests {
