@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -9,16 +10,21 @@ import (
 )
 
 func main() {
-	discordWebhook := os.Getenv("MIDIWAV_DISCORD_WEBHOOK")
-	if discordWebhook == "" {
-		log.Println("MIDIWAV_DISCORD_WEBHOOK is not set. skipping Discord upload.")
+	configPath := flag.String("config", "", "Path to TOML configuration file")
+	flag.Parse()
+
+	if *configPath == "" {
+		log.Fatal("Please specify a configuration file using -config flag")
 	}
-	targetDir := os.Getenv("MIDIWAV_DIR")
+
+	config, err := LoadConfig(*configPath)
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
 
 	exec := &executer{
-		discordWebhook: discordWebhook,
-		midiWavDir:     targetDir,
-		watchMode:      true, // TODO: make configurable
+		targets:   config.Targets,
+		watchMode: true, // TODO: make configurable
 	}
 	if err := exec.start(); err != nil {
 		log.Fatal(err)
@@ -26,9 +32,8 @@ func main() {
 }
 
 type executer struct {
-	discordWebhook string
-	midiWavDir     string
-	watchMode      bool
+	targets   []Target
+	watchMode bool
 }
 
 func (e *executer) start() error {
@@ -47,11 +52,21 @@ func (e *executer) start() error {
 }
 
 func (e *executer) execute() error {
-	unprocessed, err := findUnprocessedMIDIFiles(e.midiWavDir)
-	if err != nil {
-		log.Fatal(err)
+	for _, target := range e.targets {
+		if err := e.processTarget(target); err != nil {
+			log.Printf("Error processing target %s: %v", target.Dir, err)
+			continue
+		}
 	}
-	log.Printf("Found %d unprocessed MIDI files.\n", len(unprocessed))
+	return nil
+}
+
+func (e *executer) processTarget(target Target) error {
+	unprocessed, err := findUnprocessedMIDIFiles(target.Dir, target.Recursive)
+	if err != nil {
+		return err
+	}
+	log.Printf("Found %d unprocessed MIDI files in %s.\n", len(unprocessed), target.Dir)
 
 	for _, srcPath := range unprocessed {
 		fmt.Println("Processing:", srcPath)
@@ -68,8 +83,8 @@ func (e *executer) execute() error {
 		if err := midiToWAVE(dstWAV, srcMIDI); err != nil {
 			log.Fatal(err)
 		}
-		if e.discordWebhook != "" {
-			if err := postToDiscord(e.discordWebhook, srcMIDI, dstWAV); err != nil {
+		if target.DiscordWebhookURL != "" {
+			if err := postToDiscord(target.DiscordWebhookURL, srcMIDI, dstWAV); err != nil {
 				log.Println(err)
 			}
 		}
