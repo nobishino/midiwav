@@ -113,7 +113,34 @@ func normalizeToInt16(samples []float64, maxDeviation float64) []int16 {
 	for i, v := range samples {
 		normalized[i] = int16((v / maxDeviation) * (1<<15 - 1))
 	}
-	return normalized
+	return trimSilence(normalized)
+}
+
+// trimSilence removes leading and trailing consecutive zeros (silence) from the sample slice.
+func trimSilence(samples []int16) []int16 {
+	if len(samples) == 0 {
+		return samples
+	}
+
+	// Find the first non-zero sample
+	start := 0
+	for start < len(samples) && samples[start] == 0 {
+		start++
+	}
+
+	// If all samples are zero, return empty slice
+	if start == len(samples) {
+		return []int16{}
+	}
+
+	// Find the last non-zero sample
+	end := len(samples) - 1
+	for end >= 0 && samples[end] == 0 {
+		end--
+	}
+
+	// Return the trimmed slice (inclusive range)
+	return samples[start : end+1]
 }
 
 func squareWave(phase float64) float64 {
