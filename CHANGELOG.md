@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.1.3](https://github.com/nobishino/midiwav/compare/v0.1.2...v0.1.3) - 2026-01-21
+- Trim leading and trailing silence from WAV output by @Copilot in https://github.com/nobishino/midiwav/pull/20
+
 ## [v0.1.2](https://github.com/nobishino/midiwav/compare/v0.1.1...v0.1.2) - 2026-01-11
 - Implement golden file testing for MIDI to WAV conversion by @Copilot in https://github.com/nobishino/midiwav/pull/9
 - Add CI workflow for go test, go fmt, and go mod tidy verification by @Copilot in https://github.com/nobishino/midiwav/pull/11
