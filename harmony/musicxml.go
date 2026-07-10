@@ -73,19 +73,20 @@ type mxlDirection struct {
 }
 
 // mxlNote の要素順はMusicXMLのDTDに従う:
-// rest/pitch, duration, tie, voice, type, dot, stem, staff, notations
+// rest/pitch, duration, tie, voice, type, dot, accidental, stem, staff, notations
 type mxlNote struct {
-	XMLName   xml.Name      `xml:"note"`
-	Rest      *struct{}     `xml:"rest"`
-	Pitch     *mxlPitch     `xml:"pitch"`
-	Duration  int64         `xml:"duration"`
-	Ties      []mxlTie      `xml:"tie"`
-	Voice     int           `xml:"voice"`
-	Type      string        `xml:"type,omitempty"`
-	Dots      []struct{}    `xml:"dot"`
-	Stem      string        `xml:"stem,omitempty"`
-	Staff     int           `xml:"staff"`
-	Notations *mxlNotations `xml:"notations"`
+	XMLName    xml.Name      `xml:"note"`
+	Rest       *struct{}     `xml:"rest"`
+	Pitch      *mxlPitch     `xml:"pitch"`
+	Duration   int64         `xml:"duration"`
+	Ties       []mxlTie      `xml:"tie"`
+	Voice      int           `xml:"voice"`
+	Type       string        `xml:"type,omitempty"`
+	Dots       []struct{}    `xml:"dot"`
+	Accidental string        `xml:"accidental,omitempty"`
+	Stem       string        `xml:"stem,omitempty"`
+	Staff      int           `xml:"staff"`
+	Notations  *mxlNotations `xml:"notations"`
 }
 
 type mxlPitch struct {
@@ -167,6 +168,63 @@ func noteTypeAndDots(dur, tpq int64) (string, int) {
 	return "", 0
 }
 
+var accidentalNames = map[int]string{
+	-2: "flat-flat", -1: "flat", 0: "natural", 1: "sharp", 2: "double-sharp",
+}
+
+// keyAlters は調号が各幹音に与える変化を返す（例: fifths=-6 なら B,E,A,D,G,C が -1）。
+func keyAlters(fifths int) map[string]int {
+	alters := make(map[string]int, 7)
+	sharps := []string{"F", "C", "G", "D", "A", "E", "B"}
+	for i := 0; i < fifths && i < 7; i++ {
+		alters[sharps[i]] = 1
+	}
+	flats := []string{"B", "E", "A", "D", "G", "C", "F"}
+	for i := 0; i < -fifths && i < 7; i++ {
+		alters[flats[i]] = -1
+	}
+	return alters
+}
+
+// noteLine は臨時記号の適用範囲（同一小節内の同じ幹音・同じオクターブ）を表すキー。
+type noteLine struct {
+	step   string
+	octave int
+}
+
+// computeAccidentals は1小節分のセグメント列に対して、表示すべき臨時記号を
+// (セグメント添字, 声部) → 記号名 のマップで返す。臨時記号は五線ごとに
+// 「調号＋その小節内で確定した変化」と食い違う音に付け、同じ幹音・オクターブ
+// にはその小節内で再度付けない。タイの後半には付けない（前の小節から持続する）。
+// セグメント列は時間順である前提（同時刻の音は声部番号順に処理する）。
+func computeAccidentals(msegs []segment, sc *Score, base map[string]int) map[[2]int]string {
+	state := [2]map[noteLine]int{make(map[noteLine]int), make(map[noteLine]int)}
+	result := make(map[[2]int]string)
+	for si, s := range msegs {
+		if s.chordIdx < 0 {
+			continue
+		}
+		for voice := 1; voice <= 4; voice++ {
+			n := sc.Chords[s.chordIdx].Notes[voice-1]
+			staffIdx := 0
+			if voice >= 3 {
+				staffIdx = 1
+			}
+			line := noteLine{step: n.Step, octave: n.Octave}
+			expected, seen := state[staffIdx][line]
+			if !seen {
+				expected = base[n.Step]
+			}
+			if n.Alter == expected || s.tieStop {
+				continue
+			}
+			result[[2]int{si, voice}] = accidentalNames[n.Alter]
+			state[staffIdx][line] = n.Alter
+		}
+	}
+	return result
+}
+
 // 声部（1=S, 2=A, 3=T, 4=B）の五線と符幹の向き。
 func voiceStaffStem(voice int) (staff int, stem string) {
 	staff = 1
@@ -210,9 +268,11 @@ func (r *Report) MusicXML() ([]byte, error) {
 		byMeasure[m] = append(byMeasure[m], s)
 	}
 
+	baseAlters := keyAlters(sc.Fifths)
 	var measures []mxlMeasure
 	for m, msegs := range byMeasure {
 		measure := mxlMeasure{Number: m + 1}
+		accidentals := computeAccidentals(msegs, sc, baseAlters)
 		if m == 0 {
 			attrs := &mxlAttributes{
 				Divisions: sc.TicksPerQuarter,
@@ -237,7 +297,7 @@ func (r *Report) MusicXML() ([]byte, error) {
 				measure.Items = append(measure.Items, &mxlBackup{Duration: measureLen})
 			}
 			staff, stem := voiceStaffStem(voice)
-			for _, s := range msegs {
+			for si, s := range msegs {
 				// 和音記号は最初の声部の、和音が始まる位置にだけ付ける
 				if voice == 1 && s.chordIdx >= 0 && !s.tieStop {
 					if sym := r.Chords[s.chordIdx].Symbol; sym != "" {
@@ -259,6 +319,7 @@ func (r *Report) MusicXML() ([]byte, error) {
 						pitch.Alter = &alter
 					}
 					note.Pitch = pitch
+					note.Accidental = accidentals[[2]int{si, voice}]
 					note.Stem = stem
 					if s.tieStart || s.tieStop {
 						var notations mxlNotations

@@ -117,6 +117,7 @@
         <duration>3840</duration>
         <voice>2</voice>
         <type>whole</type>
+        <accidental>sharp</accidental>
         <stem>down</stem>
         <staff>1</staff>
       </note>
