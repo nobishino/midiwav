@@ -1,4 +1,4 @@
-package main
+package synth
 
 import (
 	"bytes"
@@ -21,19 +21,16 @@ func TestMIDIToWAVE(t *testing.T) {
 	}
 	for _, filename := range filenames {
 		t.Run(filename, func(t *testing.T) {
-			f, err := os.Open(filepath.Join("testdata", filename+".mid"))
+			smfData, err := smf.ReadFile(filepath.Join("testdata", filename+".mid"))
 			if err != nil {
-				t.Fatalf("failed to open MIDI file: %v", err)
+				t.Fatalf("failed to read MIDI file: %v", err)
 			}
-			t.Cleanup(func() {
-				f.Close()
-			})
 
 			// Generate WAV output to a buffer
 			var buf bytes.Buffer
-			err = midiToWAVE(&buf, f)
+			err = WriteWAV(&buf, smfData)
 			if err != nil {
-				t.Fatalf("MIDIToWAVE failed: %v", err)
+				t.Fatalf("WriteWAV failed: %v", err)
 			}
 
 			// Get the generated output

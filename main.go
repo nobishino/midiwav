@@ -11,6 +11,9 @@ import (
 	"unicode/utf8"
 
 	"gitlab.com/gomidi/midi/v2/smf"
+
+	"github.com/nobishino/midiwav/harmony"
+	"github.com/nobishino/midiwav/synth"
 )
 
 func main() {
@@ -89,17 +92,22 @@ func processFile(srcPath string, discordWebhookURL string) error {
 	}
 	defer srcMIDI.Close()
 
+	smfData, err := smf.ReadFrom(srcMIDI)
+	if err != nil {
+		return fmt.Errorf("failed to read MIDI file: %w", err)
+	}
+
 	dstWAV, err := os.Create(strings.TrimSuffix(srcPath, ".mid") + ".wav")
 	if err != nil {
 		return fmt.Errorf("failed to create WAV file: %w", err)
 	}
 	defer dstWAV.Close()
 
-	if err := midiToWAVE(dstWAV, srcMIDI); err != nil {
+	if err := synth.WriteWAV(dstWAV, smfData); err != nil {
 		return fmt.Errorf("failed to convert MIDI to WAV: %w", err)
 	}
 
-	report := checkHarmony(srcMIDI, srcPath)
+	report := checkHarmony(smfData, srcPath)
 	if report != "" {
 		fmt.Print(report)
 	}
@@ -114,20 +122,18 @@ func processFile(srcPath string, discordWebhookURL string) error {
 }
 
 // checkHarmony runs the harmony rule check if the MIDI looks like a
-// four-part chorale. It returns an empty report otherwise.
-func checkHarmony(srcMIDI *os.File, srcPath string) string {
-	if _, err := srcMIDI.Seek(0, 0); err != nil {
-		return ""
+// four-part chorale. It returns an empty report otherwise. The key is
+// taken from the filename (e.g. es-moll.mid).
+func checkHarmony(smfData *smf.SMF, srcPath string) string {
+	var key *harmony.Key
+	if k, ok := harmony.ParseKeyFromFilename(srcPath); ok {
+		key = &k
 	}
-	smfData, err := smf.ReadFrom(srcMIDI)
-	if err != nil {
-		return ""
-	}
-	report, ok := harmonyReport(smfData, srcPath)
+	report, ok := harmony.Analyze(smfData, key)
 	if !ok {
 		return ""
 	}
-	return report
+	return report.Format()
 }
 
 // discordContentLimit is Discord's maximum message content length in characters.

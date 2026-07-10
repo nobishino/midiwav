@@ -1,6 +1,7 @@
-package main
+package harmony
 
 import (
+	"flag"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,17 +10,33 @@ import (
 	"gitlab.com/gomidi/midi/v2/smf"
 )
 
-// TestHarmonyReportGolden は testdata/harmony/*.mid に対する添削レポートを
+var update = flag.Bool("update", false, "update golden files")
+
+// harmonyReport はファイル名から調を読み、分析して整形するテストヘルパー。
+// main パッケージでの利用と同じ組み立てを再現する。
+func harmonyReport(s *smf.SMF, path string) (string, bool) {
+	var key *Key
+	if k, ok := ParseKeyFromFilename(path); ok {
+		key = &k
+	}
+	r, ok := Analyze(s, key)
+	if !ok {
+		return "", false
+	}
+	return r.Format(), true
+}
+
+// TestHarmonyReportGolden は testdata/*.mid に対する添削レポートを
 // ゴールデンファイル（<case>.golden.txt）と照合する。調はファイル名で指定する
 // （例: parallel-fifth_c-dur.mid）。バグ再現用のMIDIファイルをこのディレクトリに
 // 置き、go test -update でゴールデンファイルを生成・更新できる。
 func TestHarmonyReportGolden(t *testing.T) {
-	paths, err := filepath.Glob(filepath.Join("testdata", "harmony", "*.mid"))
+	paths, err := filepath.Glob(filepath.Join("testdata", "*.mid"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(paths) == 0 {
-		t.Fatal("no MIDI files found in testdata/harmony")
+		t.Fatal("no MIDI files found in testdata")
 	}
 	for _, path := range paths {
 		name := strings.TrimSuffix(filepath.Base(path), ".mid")

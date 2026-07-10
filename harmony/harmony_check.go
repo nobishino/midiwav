@@ -1,4 +1,5 @@
-package main
+// Package harmony は四声体和声のMIDI禁則チェック（芸大和声ベース）を提供する。
+package harmony
 
 // 四声体和声のMIDI禁則チェッカー（芸大和声ベース）
 //
@@ -65,30 +66,31 @@ var germanNames = map[string]noteSpelling{
 	"h": {6, 0}, "his": {6, 1}, "b": {6, -1},
 }
 
-type keySignature struct {
+// Key は調（主音とdur/moll）。
+type Key struct {
 	tonic noteSpelling
 	mode  string // "dur" または "moll"
 }
 
-func (k keySignature) String() string {
+func (k Key) String() string {
 	return noteLetters[k.tonic.letter] + accidentalStr[k.tonic.acc] + "-" + k.mode
 }
 
 var keyPattern = regexp.MustCompile(`(?:^|[^a-z])([a-h](?:is|es|s)?)[-_ ]?(dur|moll)`)
 
-// parseKeyFromFilename はファイル名のドイツ語音名から調を読み取る（例: es-moll.mid）。
-func parseKeyFromFilename(path string) (keySignature, bool) {
+// ParseKeyFromFilename はファイル名のドイツ語音名から調を読み取る（例: es-moll.mid）。
+func ParseKeyFromFilename(path string) (Key, bool) {
 	base := filepath.Base(path)
 	stem := strings.ToLower(strings.TrimSuffix(base, filepath.Ext(base)))
 	m := keyPattern.FindStringSubmatch(stem)
 	if m == nil {
-		return keySignature{}, false
+		return Key{}, false
 	}
 	tonic, ok := germanNames[m[1]]
 	if !ok {
-		return keySignature{}, false
+		return Key{}, false
 	}
-	return keySignature{tonic: tonic, mode: m[2]}, true
+	return Key{tonic: tonic, mode: m[2]}, true
 }
 
 // flatSpellingTable は調が不明なときの代用（黒鍵はフラット表記）。
@@ -99,7 +101,7 @@ var flatSpellingTable = [12]noteSpelling{
 
 // buildSpellingTable はピッチクラス → 綴りの12音表を作る。全音階音は音階の綴り、
 // 半音階音は「下の音階音の上方変位」を優先し、無理なら上の音の下方変位。
-func buildSpellingTable(key keySignature) [12]noteSpelling {
+func buildSpellingTable(key Key) [12]noteSpelling {
 	steps := [7]int{2, 2, 1, 2, 2, 2, 1}
 	if key.mode == "moll" {
 		steps = [7]int{2, 1, 2, 2, 1, 2, 2}
@@ -256,14 +258,15 @@ func extractChorale(s *smf.SMF) (*chorale, bool) {
 	}, true
 }
 
-type harmonyIssue struct {
-	warn bool // true: ⚠ 禁則, false: ℹ 参考
-	msg  string
+// Issue は検出した禁則・参考警告。
+type Issue struct {
+	Warn bool // true: ⚠ 禁則, false: ℹ 参考
+	Msg  string
 }
 
 // checkBasic は綴りに依存しない検査: 交差・間隔・音域・連続・並達。
-func checkBasic(ch *chorale, table [12]noteSpelling) []harmonyIssue {
-	var issues []harmonyIssue
+func checkBasic(ch *chorale, table [12]noteSpelling) []Issue {
+	var issues []Issue
 	nm := func(n uint8) string { return noteName(n, table) }
 	for _, c := range ch.chords {
 		s, a, t, b := c.notes[0], c.notes[1], c.notes[2], c.notes[3]
@@ -272,20 +275,20 @@ func checkBasic(ch *chorale, table [12]noteSpelling) []harmonyIssue {
 			for i, n := range c.notes {
 				names[i] = nm(n)
 			}
-			issues = append(issues, harmonyIssue{true,
+			issues = append(issues, Issue{true,
 				fmt.Sprintf("[交差] %s: %s", ch.pos(c.beat), strings.Join(names, " "))})
 		}
 		if int(s)-int(a) > 12 {
-			issues = append(issues, harmonyIssue{true,
+			issues = append(issues, Issue{true,
 				fmt.Sprintf("[間隔] %s: S-A が %d 半音（8度超）", ch.pos(c.beat), int(s)-int(a))})
 		}
 		if int(a)-int(t) > 12 {
-			issues = append(issues, harmonyIssue{true,
+			issues = append(issues, Issue{true,
 				fmt.Sprintf("[間隔] %s: A-T が %d 半音（8度超）", ch.pos(c.beat), int(a)-int(t))})
 		}
 		for i, n := range c.notes {
 			if n < voiceRanges[i][0] || n > voiceRanges[i][1] {
-				issues = append(issues, harmonyIssue{false,
+				issues = append(issues, Issue{false,
 					fmt.Sprintf("[音域?] %s: %s の %s が声域外の可能性（要照合）", ch.pos(c.beat), voiceNames[i], nm(n))})
 			}
 		}
@@ -303,7 +306,7 @@ func checkBasic(ch *chorale, table [12]noteSpelling) []harmonyIssue {
 					if int1 == 0 {
 						kind = "8度/1度"
 					}
-					issues = append(issues, harmonyIssue{true,
+					issues = append(issues, Issue{true,
 						fmt.Sprintf("[連続%s] %s→%s %s: %s/%s → %s/%s",
 							kind, ch.pos(c1.beat), ch.pos(c2.beat), pair,
 							nm(hi1), nm(lo1), nm(hi2), nm(lo2))})
@@ -316,7 +319,7 @@ func checkBasic(ch *chorale, table [12]noteSpelling) []harmonyIssue {
 						if int2 == 0 {
 							kind = "8度"
 						}
-						issues = append(issues, harmonyIssue{true,
+						issues = append(issues, Issue{true,
 							fmt.Sprintf("[並達%s] %s→%s 外声: %s/%s → %s/%s",
 								kind, ch.pos(c1.beat), ch.pos(c2.beat),
 								nm(hi1), nm(lo1), nm(hi2), nm(lo2))})
@@ -329,8 +332,8 @@ func checkBasic(ch *chorale, table [12]noteSpelling) []harmonyIssue {
 }
 
 // checkSpelled は調の綴りに依存する検査: 増・減音程の旋律進行、対斜。
-func checkSpelled(ch *chorale, table [12]noteSpelling) []harmonyIssue {
-	var issues []harmonyIssue
+func checkSpelled(ch *chorale, table [12]noteSpelling) []Issue {
+	var issues []Issue
 	nm := func(n uint8) string { return noteName(n, table) }
 	for k := 0; k+1 < len(ch.chords); k++ {
 		c1, c2 := ch.chords[k], ch.chords[k+1]
@@ -345,11 +348,11 @@ func checkSpelled(ch *chorale, table [12]noteSpelling) []harmonyIssue {
 				arrow = "↑"
 			}
 			if dev >= 1 && size >= 2 {
-				issues = append(issues, harmonyIssue{true,
+				issues = append(issues, Issue{true,
 					fmt.Sprintf("[増音程] %s→%s %s: %s %s %s（%s%d度）",
 						ch.pos(c1.beat), ch.pos(c2.beat), voiceNames[v], nm(n1), arrow, nm(n2), q, size)})
 			} else if dev <= -1 {
-				issues = append(issues, harmonyIssue{false,
+				issues = append(issues, Issue{false,
 					fmt.Sprintf("[減音程] %s→%s %s: %s %s %s（%s%d度・跳躍後は反行が望ましい）",
 						ch.pos(c1.beat), ch.pos(c2.beat), voiceNames[v], nm(n1), arrow, nm(n2), q, size)})
 			}
@@ -371,7 +374,7 @@ func checkSpelled(ch *chorale, table [12]noteSpelling) []harmonyIssue {
 				if sp1[j] == sp1[i] {
 					continue
 				}
-				issues = append(issues, harmonyIssue{false,
+				issues = append(issues, Issue{false,
 					fmt.Sprintf("[対斜] %s→%s: %s の %s と %s の %s（要・教科書の許容例外と照合）",
 						ch.pos(c1.beat), ch.pos(c2.beat),
 						voiceNames[i], nm(c1.notes[i]), voiceNames[j], nm(c2.notes[j]))})
@@ -381,55 +384,87 @@ func checkSpelled(ch *chorale, table [12]noteSpelling) []harmonyIssue {
 	return issues
 }
 
-// harmonyReport は4声体和声の禁則チェックを実行し、添削レポートを返す。
-// 4声体とみなせないMIDIの場合は ok=false を返す。
-func harmonyReport(s *smf.SMF, path string) (string, bool) {
+// Chord は和音一覧の1項目。
+type Chord struct {
+	Pos    string    // 位置（例: "1小節1拍目"）
+	Symbol string    // 和音記号（度数・種類・転回位置）。調が不明の場合は空
+	Name   string    // コードネーム（例: "C", "G7/F"）
+	Notes  [4]string // S, A, T, B の順の音名
+}
+
+// Report は4声体和声の分析結果。
+type Report struct {
+	Key    *Key // 調。不明なら nil
+	Chords []Chord
+	Issues []Issue
+}
+
+// Analyze は4声体和声の禁則チェックを実行し、分析結果を返す。
+// key が nil の場合、綴りはフラット表記で代用し、綴りに依存する検査は
+// スキップする。4声体とみなせないMIDIの場合は ok=false を返す。
+func Analyze(s *smf.SMF, key *Key) (*Report, bool) {
 	ch, ok := extractChorale(s)
 	if !ok {
-		return "", false
+		return nil, false
 	}
-	key, hasKey := parseKeyFromFilename(path)
 	table := flatSpellingTable
-	if hasKey {
-		table = buildSpellingTable(key)
+	var templates []chordTemplate
+	if key != nil {
+		table = buildSpellingTable(*key)
+		templates = chordTemplates(*key)
 	}
 
+	r := &Report{Key: key}
+	for _, c := range ch.chords {
+		chord := Chord{Pos: ch.pos(c.beat), Name: chordName(c.notes, table)}
+		if key != nil {
+			chord.Symbol = chordSymbol(c.notes, templates)
+		}
+		for i, n := range c.notes {
+			chord.Notes[i] = noteName(n, table)
+		}
+		r.Chords = append(r.Chords, chord)
+	}
+	r.Issues = checkBasic(ch, table)
+	if key != nil {
+		r.Issues = append(r.Issues, checkSpelled(ch, table)...)
+	}
+	return r, true
+}
+
+// Format は分析結果を添削レポートのテキストに整形する。
+// 調は ParseKeyFromFilename でファイル名から得ている前提の文言を含む。
+func (r *Report) Format() string {
 	var b strings.Builder
-	var templates []chordTemplate
-	if hasKey {
-		fmt.Fprintf(&b, "調: %s（ファイル名から）\n", key)
-		templates = chordTemplates(key)
+	if r.Key != nil {
+		fmt.Fprintf(&b, "調: %s（ファイル名から）\n", r.Key)
 	} else {
 		b.WriteString("注意: ファイル名から調を読み取れず。和音記号の判定と増音程・減音程・対斜の検査はスキップし、綴りはフラット表記で代用。\n")
 	}
-	fmt.Fprintf(&b, "%d 和音を検査:\n", len(ch.chords))
-	for _, c := range ch.chords {
-		fmt.Fprintf(&b, "  %s ", ch.pos(c.beat))
-		if hasKey {
-			fmt.Fprintf(&b, " %s", chordSymbol(c.notes, templates))
+	fmt.Fprintf(&b, "%d 和音を検査:\n", len(r.Chords))
+	for _, c := range r.Chords {
+		fmt.Fprintf(&b, "  %s ", c.Pos)
+		if r.Key != nil {
+			fmt.Fprintf(&b, " %s", c.Symbol)
 		}
-		fmt.Fprintf(&b, " [%s]", chordName(c.notes, table))
+		fmt.Fprintf(&b, " [%s]", c.Name)
 		for i := 3; i >= 0; i-- { // 下からB, T, A, Sの順で表示する
-			fmt.Fprintf(&b, " %s:%s", voiceNames[i], noteName(c.notes[i], table))
+			fmt.Fprintf(&b, " %s:%s", voiceNames[i], c.Notes[i])
 		}
 		b.WriteByte('\n')
 	}
 
-	issues := checkBasic(ch, table)
-	if hasKey {
-		issues = append(issues, checkSpelled(ch, table)...)
-	}
 	b.WriteByte('\n')
 	var warns, infos int
-	for _, is := range issues {
-		if is.warn {
-			b.WriteString("⚠ " + is.msg + "\n")
+	for _, is := range r.Issues {
+		if is.Warn {
+			b.WriteString("⚠ " + is.Msg + "\n")
 			warns++
 		}
 	}
-	for _, is := range issues {
-		if !is.warn {
-			b.WriteString("ℹ " + is.msg + "\n")
+	for _, is := range r.Issues {
+		if !is.Warn {
+			b.WriteString("ℹ " + is.Msg + "\n")
 			infos++
 		}
 	}
@@ -440,7 +475,7 @@ func harmonyReport(s *smf.SMF, path string) (string, bool) {
 			b.WriteString("✓ 禁則違反は検出されませんでした\n")
 		}
 	}
-	return b.String(), true
+	return b.String()
 }
 
 func mod12(x int) int {
