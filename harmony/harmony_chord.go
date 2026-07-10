@@ -6,9 +6,12 @@ package harmony
 // 作り、実施4音のピッチクラス集合と照合する。完全一致を最優先とし、第5音省略形も
 // 許容する（表示には出さない）。VIIの三和音・七の和音は芸大和声の慣例に従い
 // V7・V9の根音省略形として扱う。借用和音は V調（属音を主音とする同モードの調）の
-// V・V7・V9系のみを対象とする。変位和音としては、増六の和音（V調のV9の
-// 根音省略形・第5音下方変位。第9音省略形も許容）と、mollのドリアのIV
-// （+IV7: IV7の第3音上方変位）に対応する。
+// V・V7・V9系のみを対象とする。変位和音としては、増六の和音と、mollのドリアの
+// IV（+IV7: IV7の第3音上方変位）に対応する。増六の和音は V調のV7・V9の
+// 根音省略形・第5音下方変位として、第9音（V9由来の色音）の有無で別テンプレート
+// （V調のV7 / V調のV9）を用意する。第9音が省略された3音形は、9度の構成音を
+// 持たない以上V9由来とは呼べないため、V7由来のテンプレートとして一致させる。
+// このため増六の和音は省略形へのフォールバックを行わない。
 
 import "strings"
 
@@ -131,7 +134,9 @@ func chordTemplates(key Key) []chordTemplate {
 	for _, t := range []chordTemplate{v, v7, omitRoot(v7), v9, omitRoot(v9)} {
 		ts = append(ts, borrowFromDominant(t))
 	}
-	// 増六の和音: V調のV9の根音省略形・第5音下方変位
+	// 増六の和音: V調のV7・V9の根音省略形・第5音下方変位。
+	// 第9音を含む4音形（V9由来）と、含まない3音形（V7由来）を別テンプレートとする。
+	ts = append(ts, lowerFifth(borrowFromDominant(omitRoot(v7))))
 	ts = append(ts, lowerFifth(borrowFromDominant(omitRoot(v9))))
 	return ts
 }
@@ -139,7 +144,7 @@ func chordTemplates(key Key) []chordTemplate {
 // chordAnalysis は和音記号の判定結果。
 type chordAnalysis struct {
 	template    chordTemplate
-	toneOmitted bool // 省略可能な構成音（通常は第5音、増六では第9音）の省略形
+	toneOmitted bool // 第5音省略形（増六の和音では常にfalse）
 	bassRole    int  // バスが担う構成音の役割。転回位置の番号
 }
 
@@ -156,18 +161,15 @@ func (a chordAnalysis) String() string {
 }
 
 // matchTemplate は実施のピッチクラス集合をテンプレートと照合する。
-// 完全形が一致しなければ省略形も試す。省略できる音は通常は第5音、
-// 増六の和音では第5音が特徴音（変位音）のため第9音とする。
+// 完全形が一致しなければ第5音の省略形も試す。増六の和音は第5音自体が
+// 特徴音（変位音）であり、第9音の有無で別テンプレートを用意しているため
+// 省略形へのフォールバックは行わない。
 func matchTemplate(t chordTemplate, pcSet [12]bool, bassPC int) (chordAnalysis, bool) {
-	omittableRole := roleFifth
-	if t.augSixth {
-		omittableRole = roleNinth
-	}
 	match := func(omit bool) (chordAnalysis, bool) {
 		var want [12]bool
 		bassRole := -1
 		for r, pc := range t.pcByRole {
-			if omit && r == omittableRole {
+			if omit && r == roleFifth {
 				continue
 			}
 			want[pc] = true
@@ -183,7 +185,10 @@ func matchTemplate(t chordTemplate, pcSet [12]bool, bassPC int) (chordAnalysis, 
 	if a, ok := match(false); ok {
 		return a, true
 	}
-	if _, ok := t.pcByRole[omittableRole]; ok {
+	if t.augSixth {
+		return chordAnalysis{}, false
+	}
+	if _, ok := t.pcByRole[roleFifth]; ok {
 		return match(true)
 	}
 	return chordAnalysis{}, false
