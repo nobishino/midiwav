@@ -1,0 +1,300 @@
+package harmony
+
+// MusicXML (score-partwise) の生成。
+//
+// 大譜表2段のコラール定番レイアウトで出力する: 上段（ト音記号）に
+// S（声部1・符幹上）とA（声部2・符幹下）、下段（ヘ音記号）に
+// T（声部3・符幹上）とB（声部4・符幹下）。和音記号は下段の下に
+// <direction><words> として付ける。
+//
+// 音価はScoreの近似（次のオンセットまで）に従う。小節線をまたぐ音は
+// 分割してタイで結ぶ。曲頭に空白がある場合は休符で埋める。
+
+import (
+	"encoding/xml"
+	"fmt"
+)
+
+type mxlScorePartwise struct {
+	XMLName  xml.Name    `xml:"score-partwise"`
+	Version  string      `xml:"version,attr"`
+	PartList mxlPartList `xml:"part-list"`
+	Parts    []mxlPart   `xml:"part"`
+}
+
+type mxlPartList struct {
+	ScoreParts []mxlScorePart `xml:"score-part"`
+}
+
+type mxlScorePart struct {
+	ID   string `xml:"id,attr"`
+	Name string `xml:"part-name"`
+}
+
+type mxlPart struct {
+	ID       string       `xml:"id,attr"`
+	Measures []mxlMeasure `xml:"measure"`
+}
+
+type mxlMeasure struct {
+	Number int   `xml:"number,attr"`
+	Items  []any // mxlAttributes / mxlDirection / mxlNote / mxlBackup の列
+}
+
+type mxlAttributes struct {
+	XMLName   xml.Name  `xml:"attributes"`
+	Divisions int       `xml:"divisions"`
+	Key       *mxlKey   `xml:"key"`
+	Time      *mxlTime  `xml:"time"`
+	Staves    int       `xml:"staves"`
+	Clefs     []mxlClef `xml:"clef"`
+}
+
+type mxlKey struct {
+	Fifths int `xml:"fifths"`
+}
+
+type mxlTime struct {
+	Beats    int `xml:"beats"`
+	BeatType int `xml:"beat-type"`
+}
+
+type mxlClef struct {
+	Number int    `xml:"number,attr"`
+	Sign   string `xml:"sign"`
+	Line   int    `xml:"line"`
+}
+
+type mxlDirection struct {
+	XMLName   xml.Name `xml:"direction"`
+	Placement string   `xml:"placement,attr"`
+	Words     string   `xml:"direction-type>words"`
+	Staff     int      `xml:"staff"`
+}
+
+// mxlNote の要素順はMusicXMLのDTDに従う:
+// rest/pitch, duration, tie, voice, type, dot, stem, staff, notations
+type mxlNote struct {
+	XMLName   xml.Name      `xml:"note"`
+	Rest      *struct{}     `xml:"rest"`
+	Pitch     *mxlPitch     `xml:"pitch"`
+	Duration  int64         `xml:"duration"`
+	Ties      []mxlTie      `xml:"tie"`
+	Voice     int           `xml:"voice"`
+	Type      string        `xml:"type,omitempty"`
+	Dots      []struct{}    `xml:"dot"`
+	Stem      string        `xml:"stem,omitempty"`
+	Staff     int           `xml:"staff"`
+	Notations *mxlNotations `xml:"notations"`
+}
+
+type mxlPitch struct {
+	Step   string `xml:"step"`
+	Alter  *int   `xml:"alter"`
+	Octave int    `xml:"octave"`
+}
+
+type mxlTie struct {
+	Type string `xml:"type,attr"`
+}
+
+type mxlNotations struct {
+	Tied []mxlTied `xml:"tied"`
+}
+
+type mxlTied struct {
+	Type string `xml:"type,attr"`
+}
+
+type mxlBackup struct {
+	XMLName  xml.Name `xml:"backup"`
+	Duration int64    `xml:"duration"`
+}
+
+// segment は小節線で分割した音（またはタイの一部・休符）。
+type segment struct {
+	chordIdx          int // 対応する Score.Chords の添字。休符は -1
+	start, dur        int64
+	tieStart, tieStop bool
+}
+
+// splitAtMeasures は [start, start+dur) を小節境界で分割する。
+func splitAtMeasures(chordIdx int, start, dur, measureTicks int64) []segment {
+	var segs []segment
+	for dur > 0 {
+		remain := measureTicks - start%measureTicks
+		d := min(dur, remain)
+		segs = append(segs, segment{chordIdx: chordIdx, start: start, dur: d})
+		start += d
+		dur -= d
+	}
+	// タイは音符（休符でない）が2つ以上に分かれた場合のみ
+	if chordIdx >= 0 && len(segs) > 1 {
+		for i := range segs {
+			if i > 0 {
+				segs[i].tieStop = true
+			}
+			if i < len(segs)-1 {
+				segs[i].tieStart = true
+			}
+		}
+	}
+	return segs
+}
+
+// noteTypeAndDots は音価（ティック）から音符の種類と付点の数を返す。
+// 対応しない音価の場合は空文字列を返す（duration のみで表現する）。
+func noteTypeAndDots(dur, tpq int64) (string, int) {
+	bases := []struct {
+		name  string
+		ticks int64
+	}{
+		{"breve", 8 * tpq},
+		{"whole", 4 * tpq},
+		{"half", 2 * tpq},
+		{"quarter", tpq},
+		{"eighth", tpq / 2},
+		{"16th", tpq / 4},
+	}
+	for _, b := range bases {
+		if dur == b.ticks {
+			return b.name, 0
+		}
+		if dur == b.ticks*3/2 {
+			return b.name, 1
+		}
+	}
+	return "", 0
+}
+
+// 声部（1=S, 2=A, 3=T, 4=B）の五線と符幹の向き。
+func voiceStaffStem(voice int) (staff int, stem string) {
+	staff = 1
+	if voice >= 3 {
+		staff = 2
+	}
+	stem = "up"
+	if voice%2 == 0 {
+		stem = "down"
+	}
+	return staff, stem
+}
+
+// MusicXML は分析結果を MusicXML (score-partwise) に変換する。
+func (r *Report) MusicXML() ([]byte, error) {
+	sc := r.Score
+	if sc == nil || len(sc.Chords) == 0 {
+		return nil, fmt.Errorf("no score data")
+	}
+	tpq := int64(sc.TicksPerQuarter)
+	measureTicks := tpq * 4 * int64(sc.MeterNum) / int64(sc.MeterDenom)
+	if measureTicks <= 0 {
+		return nil, fmt.Errorf("invalid meter %d/%d", sc.MeterNum, sc.MeterDenom)
+	}
+
+	// 曲頭の空白（弱起でない前提だが、位置ずれを防ぐため休符で埋める）と
+	// 各和音を小節境界で分割してタイムラインを作る。
+	var segs []segment
+	if first := sc.Chords[0].OnsetTicks; first > 0 {
+		segs = append(segs, splitAtMeasures(-1, 0, first, measureTicks)...)
+	}
+	for i, c := range sc.Chords {
+		segs = append(segs, splitAtMeasures(i, c.OnsetTicks, c.DurationTicks, measureTicks)...)
+	}
+
+	// 小節ごとにまとめる
+	numMeasures := int((segs[len(segs)-1].start + segs[len(segs)-1].dur + measureTicks - 1) / measureTicks)
+	byMeasure := make([][]segment, numMeasures)
+	for _, s := range segs {
+		m := int(s.start / measureTicks)
+		byMeasure[m] = append(byMeasure[m], s)
+	}
+
+	var measures []mxlMeasure
+	for m, msegs := range byMeasure {
+		measure := mxlMeasure{Number: m + 1}
+		if m == 0 {
+			attrs := &mxlAttributes{
+				Divisions: sc.TicksPerQuarter,
+				Time:      &mxlTime{Beats: sc.MeterNum, BeatType: sc.MeterDenom},
+				Staves:    2,
+				Clefs: []mxlClef{
+					{Number: 1, Sign: "G", Line: 2},
+					{Number: 2, Sign: "F", Line: 4},
+				},
+			}
+			if sc.HasKey {
+				attrs.Key = &mxlKey{Fifths: sc.Fifths}
+			}
+			measure.Items = append(measure.Items, attrs)
+		}
+		var measureLen int64
+		for _, s := range msegs {
+			measureLen += s.dur
+		}
+		for voice := 1; voice <= 4; voice++ {
+			if voice > 1 {
+				measure.Items = append(measure.Items, &mxlBackup{Duration: measureLen})
+			}
+			staff, stem := voiceStaffStem(voice)
+			for _, s := range msegs {
+				// 和音記号は最初の声部の、和音が始まる位置にだけ付ける
+				if voice == 1 && s.chordIdx >= 0 && !s.tieStop {
+					if sym := r.Chords[s.chordIdx].Symbol; sym != "" {
+						measure.Items = append(measure.Items, &mxlDirection{
+							Placement: "below",
+							Words:     sym,
+							Staff:     2,
+						})
+					}
+				}
+				note := &mxlNote{Duration: s.dur, Voice: voice, Staff: staff}
+				if s.chordIdx < 0 {
+					note.Rest = &struct{}{}
+				} else {
+					n := sc.Chords[s.chordIdx].Notes[voice-1]
+					pitch := &mxlPitch{Step: n.Step, Octave: n.Octave}
+					if n.Alter != 0 {
+						alter := n.Alter
+						pitch.Alter = &alter
+					}
+					note.Pitch = pitch
+					note.Stem = stem
+					if s.tieStart || s.tieStop {
+						var notations mxlNotations
+						if s.tieStop {
+							note.Ties = append(note.Ties, mxlTie{Type: "stop"})
+							notations.Tied = append(notations.Tied, mxlTied{Type: "stop"})
+						}
+						if s.tieStart {
+							note.Ties = append(note.Ties, mxlTie{Type: "start"})
+							notations.Tied = append(notations.Tied, mxlTied{Type: "start"})
+						}
+						note.Notations = &notations
+					}
+				}
+				if typ, dots := noteTypeAndDots(s.dur, tpq); typ != "" {
+					note.Type = typ
+					note.Dots = make([]struct{}, dots)
+				}
+				measure.Items = append(measure.Items, note)
+			}
+		}
+		measures = append(measures, measure)
+	}
+
+	doc := mxlScorePartwise{
+		Version: "4.0",
+		PartList: mxlPartList{ScoreParts: []mxlScorePart{
+			{ID: "P1", Name: "SATB"},
+		}},
+		Parts: []mxlPart{{ID: "P1", Measures: measures}},
+	}
+	body, err := xml.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	header := xml.Header +
+		`<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">` + "\n"
+	return append([]byte(header), append(body, '\n')...), nil
+}
