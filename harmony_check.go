@@ -409,8 +409,8 @@ func harmonyReport(s *smf.SMF, path string) (string, bool) {
 			fmt.Fprintf(&b, " %s", chordSymbol(c.notes, templates))
 		}
 		fmt.Fprintf(&b, " [%s]", chordName(c.notes, table))
-		for i, n := range c.notes {
-			fmt.Fprintf(&b, " %s:%s", voiceNames[i], noteName(n, table))
+		for i := 3; i >= 0; i-- { // 下からB, T, A, Sの順で表示する
+			fmt.Fprintf(&b, " %s:%s", voiceNames[i], noteName(c.notes[i], table))
 		}
 		b.WriteByte('\n')
 	}

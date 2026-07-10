@@ -79,10 +79,10 @@ func TestHarmonyReportChordSymbols(t *testing.T) {
 	if !ok {
 		t.Fatal("harmonyReport: not recognized as a 4-voice chorale")
 	}
-	if !strings.Contains(report, "I(基本位置) [C] S:C5") {
+	if !strings.Contains(report, "I(基本位置) [C] B:C4") {
 		t.Errorf("report should contain chord symbol and name for the first chord, got:\n%s", report)
 	}
-	if !strings.Contains(report, "V7(第3転回位置) [G7/F] S:D5") {
+	if !strings.Contains(report, "V7(第3転回位置) [G7/F] B:F3") {
 		t.Errorf("report should contain chord symbol and name for the second chord, got:\n%s", report)
 	}
 
@@ -94,7 +94,7 @@ func TestHarmonyReportChordSymbols(t *testing.T) {
 	if strings.Contains(noKey, "基本位置") {
 		t.Errorf("report without key should not contain chord symbols, got:\n%s", noKey)
 	}
-	if !strings.Contains(noKey, "[C] S:C5") {
+	if !strings.Contains(noKey, "[C] B:C4") {
 		t.Errorf("report without key should still contain chord names, got:\n%s", noKey)
 	}
 }
