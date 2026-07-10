@@ -6,7 +6,11 @@ package harmony
 // 作り、実施4音のピッチクラス集合と照合する。完全一致を最優先とし、第5音省略形も
 // 許容する（表示には出さない）。VIIの三和音・七の和音は芸大和声の慣例に従い
 // V7・V9の根音省略形として扱う。借用和音は V調（属音を主音とする同モードの調）の
-// V・V7・V9系のみを対象とする。
+// V・V7・V9系のみを対象とする。変位和音としては、増六の和音（V調のV9の
+// 根音省略形・第5音下方変位。第9音省略形も許容）と、mollのドリアのIV
+// （+IV7: IV7の第3音上方変位）に対応する。
+
+import "strings"
 
 // 和音構成音の役割。値は転回位置の番号（0=基本位置の基準となる根音）を兼ねる。
 const (
@@ -26,6 +30,7 @@ type chordTemplate struct {
 	label       string      // 例: "I", "V7", "V調のV9"
 	rootOmitted bool        // 根音省略形
 	borrowed    bool        // 借用和音（V調）
+	augSixth    bool        // 増六の和音（第5音下方変位）
 	sizeRank    int         // 0=三和音, 1=七の和音, 2=九の和音
 	degree      int         // 度数（0..6）。優先順位のタイブレーク用
 	pcByRole    map[int]int // 役割 → ピッチクラス（存在する構成音のみ）
@@ -79,6 +84,34 @@ func borrowFromDominant(t chordTemplate) chordTemplate {
 	return t
 }
 
+// lowerFifth は第5音を半音下げた増六の和音の形を作る。
+func lowerFifth(t chordTemplate) chordTemplate {
+	pcs := make(map[int]int, len(t.pcByRole))
+	for r, pc := range t.pcByRole {
+		if r == roleFifth {
+			pc = mod12(pc - 1)
+		}
+		pcs[r] = pc
+	}
+	t.pcByRole = pcs
+	t.augSixth = true
+	return t
+}
+
+// raiseThird は第3音を半音上げた形（ドリアのIV）を作る。
+func raiseThird(t chordTemplate) chordTemplate {
+	pcs := make(map[int]int, len(t.pcByRole))
+	for r, pc := range t.pcByRole {
+		if r == roleThird {
+			pc = mod12(pc + 1)
+		}
+		pcs[r] = pc
+	}
+	t.pcByRole = pcs
+	t.label = "+" + t.label
+	return t
+}
+
 // chordTemplates は調に対する候補和音テンプレートの一覧を作る。
 func chordTemplates(key Key) []chordTemplate {
 	scale := scalePitchClasses(key)
@@ -87,39 +120,54 @@ func chordTemplates(key Key) []chordTemplate {
 		ts = append(ts, buildTemplate(scale, d, 3, degreeNumerals[d]))
 	}
 	ii7 := buildTemplate(scale, 1, 4, "II7")
+	iv7 := buildTemplate(scale, 3, 4, "IV7")
 	v7 := buildTemplate(scale, 4, 4, "V7")
 	v9 := buildTemplate(scale, 4, 5, "V9")
-	ts = append(ts, ii7, v7, omitRoot(v7), v9, omitRoot(v9))
+	ts = append(ts, ii7, iv7, v7, omitRoot(v7), v9, omitRoot(v9))
+	if key.mode == "moll" {
+		ts = append(ts, raiseThird(iv7)) // ドリアのIV（+IV7）
+	}
 	v := buildTemplate(scale, 4, 3, "V")
 	for _, t := range []chordTemplate{v, v7, omitRoot(v7), v9, omitRoot(v9)} {
 		ts = append(ts, borrowFromDominant(t))
 	}
+	// 増六の和音: V調のV9の根音省略形・第5音下方変位
+	ts = append(ts, lowerFifth(borrowFromDominant(omitRoot(v9))))
 	return ts
 }
 
 // chordAnalysis は和音記号の判定結果。
 type chordAnalysis struct {
-	template     chordTemplate
-	fifthOmitted bool
-	bassRole     int // バスが担う構成音の役割。転回位置の番号
+	template    chordTemplate
+	toneOmitted bool // 省略可能な構成音（通常は第5音、増六では第9音）の省略形
+	bassRole    int  // バスが担う構成音の役割。転回位置の番号
 }
 
 func (a chordAnalysis) String() string {
-	inv := inversionNames[a.bassRole]
-	if a.template.rootOmitted {
-		return a.template.label + "(根音省略形・" + inv + ")"
+	parts := make([]string, 0, 3)
+	if a.template.augSixth {
+		parts = append(parts, "増六")
 	}
-	return a.template.label + "(" + inv + ")"
+	if a.template.rootOmitted {
+		parts = append(parts, "根音省略形")
+	}
+	parts = append(parts, inversionNames[a.bassRole])
+	return a.template.label + "(" + strings.Join(parts, "・") + ")"
 }
 
 // matchTemplate は実施のピッチクラス集合をテンプレートと照合する。
-// 完全形が一致しなければ第5音省略形も試す。
+// 完全形が一致しなければ省略形も試す。省略できる音は通常は第5音、
+// 増六の和音では第5音が特徴音（変位音）のため第9音とする。
 func matchTemplate(t chordTemplate, pcSet [12]bool, bassPC int) (chordAnalysis, bool) {
-	match := func(omitFifth bool) (chordAnalysis, bool) {
+	omittableRole := roleFifth
+	if t.augSixth {
+		omittableRole = roleNinth
+	}
+	match := func(omit bool) (chordAnalysis, bool) {
 		var want [12]bool
 		bassRole := -1
 		for r, pc := range t.pcByRole {
-			if omitFifth && r == roleFifth {
+			if omit && r == omittableRole {
 				continue
 			}
 			want[pc] = true
@@ -130,12 +178,12 @@ func matchTemplate(t chordTemplate, pcSet [12]bool, bassPC int) (chordAnalysis, 
 		if want != pcSet || bassRole < 0 {
 			return chordAnalysis{}, false
 		}
-		return chordAnalysis{template: t, fifthOmitted: omitFifth, bassRole: bassRole}, true
+		return chordAnalysis{template: t, toneOmitted: omit, bassRole: bassRole}, true
 	}
 	if a, ok := match(false); ok {
 		return a, true
 	}
-	if _, hasFifth := t.pcByRole[roleFifth]; hasFifth {
+	if _, ok := t.pcByRole[omittableRole]; ok {
 		return match(true)
 	}
 	return chordAnalysis{}, false
@@ -144,8 +192,8 @@ func matchTemplate(t chordTemplate, pcSet [12]bool, bassPC int) (chordAnalysis, 
 // betterAnalysis は a が b より妥当な解釈かを返す。
 // 優先順位: 省略が少ない > 固有和音 > 単純な和音 > 低い度数。
 func betterAnalysis(a, b chordAnalysis) bool {
-	ak := [4]int{b2i(a.fifthOmitted), b2i(a.template.borrowed), a.template.sizeRank, a.template.degree}
-	bk := [4]int{b2i(b.fifthOmitted), b2i(b.template.borrowed), b.template.sizeRank, b.template.degree}
+	ak := [4]int{b2i(a.toneOmitted), b2i(a.template.borrowed), a.template.sizeRank, a.template.degree}
+	bk := [4]int{b2i(b.toneOmitted), b2i(b.template.borrowed), b.template.sizeRank, b.template.degree}
 	for i := range ak {
 		if ak[i] != bk[i] {
 			return ak[i] < bk[i]
