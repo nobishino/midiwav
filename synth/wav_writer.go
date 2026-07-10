@@ -1,6 +1,7 @@
 package synth
 
 import (
+	"bufio"
 	"encoding/binary"
 	"io"
 )
@@ -16,8 +17,10 @@ const (
 )
 
 func writeWAVE(w io.Writer, normalizedSamples []int16) error {
+	// サンプルごとにos.Fileへ直接システムコールが発生するのを避けるためバッファする。
+	bw := bufio.NewWriterSize(w, 1<<16)
 	numSamples := uint32(len(normalizedSamples)) // モノラル前提
-	lew := newLittleEndianWriter(w)
+	lew := newLittleEndianWriter(bw)
 	// === WAV header ===
 	if err := lew.WriteString("RIFF"); err != nil {
 		return err
@@ -67,7 +70,7 @@ func writeWAVE(w io.Writer, normalizedSamples []int16) error {
 			return err
 		}
 	}
-	return nil
+	return bw.Flush()
 }
 
 type littleEndianWriter struct {
