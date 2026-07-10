@@ -395,14 +395,19 @@ func harmonyReport(s *smf.SMF, path string) (string, bool) {
 	}
 
 	var b strings.Builder
+	var templates []chordTemplate
 	if hasKey {
 		fmt.Fprintf(&b, "調: %s（ファイル名から）\n", key)
+		templates = chordTemplates(key)
 	} else {
-		b.WriteString("注意: ファイル名から調を読み取れず。増音程・減音程・対斜の検査はスキップし、綴りはフラット表記で代用。\n")
+		b.WriteString("注意: ファイル名から調を読み取れず。和音記号の判定と増音程・減音程・対斜の検査はスキップし、綴りはフラット表記で代用。\n")
 	}
 	fmt.Fprintf(&b, "%d 和音を検査:\n", len(ch.chords))
 	for _, c := range ch.chords {
 		fmt.Fprintf(&b, "  %s ", ch.pos(c.beat))
+		if hasKey {
+			fmt.Fprintf(&b, " %s", chordSymbol(c.notes, templates))
+		}
 		for i, n := range c.notes {
 			fmt.Fprintf(&b, " %s:%s", voiceNames[i], noteName(n, table))
 		}
