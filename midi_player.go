@@ -1,10 +1,12 @@
 package main
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"io"
 	"math"
+	"slices"
 
 	"gitlab.com/gomidi/midi/v2/smf"
 )
@@ -30,30 +32,29 @@ func smfToPCMArray(smfData *smf.SMF) ([]int16, error) {
 		return nil, errors.New("only MetricTicks time format is supported")
 	}
 	fmt.Println("MetricTicks:", metricTicks)
+	tempi := newTempoMap(smfData, metricTicks)
 	trackNum := len(smfData.Tracks)
 	sampleTracks := make([][]float64, 0, trackNum)
-	var bpm float64
-	// TODO: 複数トラック対応
 	for _, track := range smfData.Tracks {
-		var time float64    // 経過時間（秒）
+		var tick int64      // 曲頭からの絶対tick
 		var sampleIndex int // サンプルの番号
 		keyToVelocity := make(map[uint8]uint8)
 		attack := make(map[uint8]uint16)             // 発音直後の音かどうか 音の連打を表現するために使ってみる
 		samples := make([]float64, 0, sampleRate*60) // heuristic: 1分間のサンプル分のcapを事前確保
 		for _, ev := range track {
+			tick += int64(ev.Delta)
 			var key, velocity uint8
+			isNote := false
 			switch msg := ev.Message; {
-			case msg.GetMetaTempo(&bpm):
-				fmt.Printf("Set Tempo to %f BPM(MetaTempo)\n", bpm)
 			case msg.GetNoteEnd(nil, &key):
+				isNote = true
 			case msg.GetNoteOn(nil, &key, &velocity):
 				attack[key] = 1000 // 発音直後の音としてマーク
-			case bpm == 0:
-				continue // bpm == 0 の状態では時計を進めないし、音も鳴らさない
+				isNote = true
 			}
-			deltaTime := float64(ev.Delta) * 60 / (bpm * float64(metricTicks))
-			for sampleTime(sampleIndex) < time+deltaTime {
-				// サンプルの値を出力する
+			// このイベントの時刻までのサンプルを出力する
+			eventTime := tempi.seconds(tick)
+			for sampleTime(sampleIndex) < eventTime {
 				var deviation float64
 				// すべての音符について、正弦波を重ね合わせ
 				for k, velocity := range keyToVelocity {
@@ -67,13 +68,68 @@ func smfToPCMArray(smfData *smf.SMF) ([]int16, error) {
 				samples = append(samples, deviation)
 				sampleIndex++ // sampleIndex == すでに出力し終わったサンプル数になる
 			}
-			// player stateの更新
-			keyToVelocity[key] = velocity
-			time += deltaTime
+			// player stateの更新（音符以外のイベントは発音状態を変えない）
+			if isNote {
+				keyToVelocity[key] = velocity
+			}
 		}
 		sampleTracks = append(sampleTracks, samples)
 	}
 	return summarizeSamples(sampleTracks), nil
+}
+
+// tempoMap は全トラックのテンポイベントから作る、絶対tick → 秒の変換表。
+// SMF仕様に従い、テンポ未指定の区間は 120 BPM とする。
+type tempoMap struct {
+	ticks []int64   // テンポ変化点の絶対tick（昇順・重複なし）
+	secs  []float64 // 各変化点の時刻（秒）
+	spt   []float64 // 各変化点以降の 1 tick あたりの秒数
+}
+
+func newTempoMap(smfData *smf.SMF, metricTicks smf.MetricTicks) *tempoMap {
+	type change struct {
+		tick int64
+		bpm  float64
+	}
+	changes := []change{{0, 120}} // SMFのデフォルトテンポ
+	for _, track := range smfData.Tracks {
+		var tick int64
+		for _, ev := range track {
+			tick += int64(ev.Delta)
+			var bpm float64
+			if ev.Message.GetMetaTempo(&bpm) && bpm > 0 {
+				changes = append(changes, change{tick, bpm})
+			}
+		}
+	}
+	slices.SortStableFunc(changes, func(a, b change) int { return cmp.Compare(a.tick, b.tick) })
+
+	m := &tempoMap{}
+	var sec float64
+	for i, c := range changes {
+		if i > 0 {
+			sec += float64(c.tick-changes[i-1].tick) * m.spt[len(m.spt)-1]
+		}
+		spt := 60 / (c.bpm * float64(metricTicks))
+		if last := len(m.ticks) - 1; last >= 0 && m.ticks[last] == c.tick {
+			// 同一tickの変化は後勝ち（tick 0 のデフォルトが上書きされるケースを含む）
+			m.secs[last], m.spt[last] = sec, spt
+		} else {
+			m.ticks = append(m.ticks, c.tick)
+			m.secs = append(m.secs, sec)
+			m.spt = append(m.spt, spt)
+		}
+	}
+	return m
+}
+
+// seconds は曲頭からの絶対tickを秒に変換する。
+func (m *tempoMap) seconds(tick int64) float64 {
+	i, found := slices.BinarySearch(m.ticks, tick)
+	if !found {
+		i-- // 直近の変化点（ticks[i] <= tick の最大の i）。ticks[0] == 0 なので i >= 0
+	}
+	return m.secs[i] + float64(tick-m.ticks[i])*m.spt[i]
 }
 
 func sampleTime(sampleIndex int) float64 {
