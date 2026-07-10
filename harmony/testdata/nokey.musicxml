@@ -3,7 +3,7 @@
 <score-partwise version="4.0">
   <part-list>
     <score-part id="P1">
-      <part-name>SATB</part-name>
+      <part-name print-object="no">SATB</part-name>
     </score-part>
   </part-list>
   <part id="P1">
