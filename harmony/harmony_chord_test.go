@@ -1,4 +1,4 @@
-package main
+package harmony
 
 import (
 	"strings"
@@ -7,7 +7,7 @@ import (
 
 func templatesFor(t *testing.T, filename string) []chordTemplate {
 	t.Helper()
-	key, ok := parseKeyFromFilename(filename)
+	key, ok := ParseKeyFromFilename(filename)
 	if !ok {
 		t.Fatalf("failed to parse key from %q", filename)
 	}
@@ -100,11 +100,11 @@ func TestHarmonyReportChordSymbols(t *testing.T) {
 }
 
 func TestChordName(t *testing.T) {
-	cdur, _ := parseKeyFromFilename("c-dur.mid")
+	cdur, _ := ParseKeyFromFilename("c-dur.mid")
 	cdurTable := buildSpellingTable(cdur)
-	amoll, _ := parseKeyFromFilename("a-moll.mid")
+	amoll, _ := ParseKeyFromFilename("a-moll.mid")
 	amollTable := buildSpellingTable(amoll)
-	esmoll, _ := parseKeyFromFilename("es-moll.mid")
+	esmoll, _ := ParseKeyFromFilename("es-moll.mid")
 	esmollTable := buildSpellingTable(esmoll)
 
 	tests := []struct {

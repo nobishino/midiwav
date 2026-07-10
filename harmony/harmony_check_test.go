@@ -1,4 +1,4 @@
-package main
+package harmony
 
 import (
 	"strings"
@@ -24,21 +24,21 @@ func TestParseKeyFromFilename(t *testing.T) {
 		{"melody.mid", "", false},
 	}
 	for _, tt := range tests {
-		key, ok := parseKeyFromFilename(tt.path)
+		key, ok := ParseKeyFromFilename(tt.path)
 		if ok != tt.ok {
-			t.Errorf("parseKeyFromFilename(%q) ok = %v, want %v", tt.path, ok, tt.ok)
+			t.Errorf("ParseKeyFromFilename(%q) ok = %v, want %v", tt.path, ok, tt.ok)
 			continue
 		}
 		if ok && key.String() != tt.want {
-			t.Errorf("parseKeyFromFilename(%q) = %s, want %s", tt.path, key, tt.want)
+			t.Errorf("ParseKeyFromFilename(%q) = %s, want %s", tt.path, key, tt.want)
 		}
 	}
 }
 
 func TestBuildSpellingTable(t *testing.T) {
-	mustKey := func(name string) keySignature {
+	mustKey := func(name string) Key {
 		t.Helper()
-		key, ok := parseKeyFromFilename(name)
+		key, ok := ParseKeyFromFilename(name)
 		if !ok {
 			t.Fatalf("failed to parse key from %q", name)
 		}
@@ -73,14 +73,14 @@ func TestNoteName(t *testing.T) {
 	if got := noteName(61, flatSpellingTable); got != "Db4" {
 		t.Errorf("noteName(61) = %s, want Db4", got)
 	}
-	key, _ := parseKeyFromFilename("c-dur.mid")
+	key, _ := ParseKeyFromFilename("c-dur.mid")
 	if got := noteName(61, buildSpellingTable(key)); got != "C#4" {
 		t.Errorf("noteName(61, C-dur) = %s, want C#4", got)
 	}
 }
 
 func TestIntervalQuality(t *testing.T) {
-	key, _ := parseKeyFromFilename("c-dur.mid")
+	key, _ := ParseKeyFromFilename("c-dur.mid")
 	table := buildSpellingTable(key)
 	tests := []struct {
 		n1, n2   uint8
@@ -101,7 +101,7 @@ func TestIntervalQuality(t *testing.T) {
 		}
 	}
 	// a-moll における F4 → G#4 は増2度
-	amoll, _ := parseKeyFromFilename("a-moll.mid")
+	amoll, _ := ParseKeyFromFilename("a-moll.mid")
 	size, dev, name := intervalQuality(65, 68, buildSpellingTable(amoll))
 	if size != 2 || dev != 1 || name != "増" {
 		t.Errorf("intervalQuality(F4, G#4, a-moll) = %d, %d, %s, want 2, 1, 増", size, dev, name)
@@ -220,7 +220,7 @@ func TestHarmonyReportCrossingAndSpacing(t *testing.T) {
 }
 
 func TestCheckSpelledAugmentedAndCrossRelation(t *testing.T) {
-	amoll, _ := parseKeyFromFilename("a-moll.mid")
+	amoll, _ := ParseKeyFromFilename("a-moll.mid")
 	table := buildSpellingTable(amoll)
 
 	// A(声部2番目)が F4 → G#4 と増2度で進行
@@ -234,7 +234,7 @@ func TestCheckSpelledAugmentedAndCrossRelation(t *testing.T) {
 	issues := checkSpelled(aug, table)
 	found := false
 	for _, is := range issues {
-		if is.warn && strings.Contains(is.msg, "[増音程]") && strings.Contains(is.msg, "F4 ↑ G#4（増2度）") {
+		if is.Warn && strings.Contains(is.Msg, "[増音程]") && strings.Contains(is.Msg, "F4 ↑ G#4（増2度）") {
 			found = true
 		}
 	}
@@ -253,7 +253,7 @@ func TestCheckSpelledAugmentedAndCrossRelation(t *testing.T) {
 	issues = checkSpelled(cross, table)
 	found = false
 	for _, is := range issues {
-		if !is.warn && strings.Contains(is.msg, "[対斜]") && strings.Contains(is.msg, "T の G3 と S の G#4") {
+		if !is.Warn && strings.Contains(is.Msg, "[対斜]") && strings.Contains(is.Msg, "T の G3 と S の G#4") {
 			found = true
 		}
 	}

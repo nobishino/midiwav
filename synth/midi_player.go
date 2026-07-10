@@ -1,4 +1,5 @@
-package main
+// Package synth はMIDIから矩形波によるWAV音声を合成する。
+package synth
 
 import (
 	"cmp"
@@ -11,11 +12,8 @@ import (
 	"gitlab.com/gomidi/midi/v2/smf"
 )
 
-func midiToWAVE(dst io.Writer, src io.Reader) error {
-	smfData, err := smf.ReadFrom(src)
-	if err != nil {
-		return err
-	}
+// WriteWAV はMIDIを矩形波で合成し、WAV形式で書き出す。
+func WriteWAV(dst io.Writer, smfData *smf.SMF) error {
 	samples, err := smfToPCMArray(smfData)
 	if err != nil {
 		return err

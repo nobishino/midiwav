@@ -1,4 +1,4 @@
-package main
+package harmony
 
 // 和音記号（度数・種類・転回位置）の判定。
 //
@@ -32,7 +32,7 @@ type chordTemplate struct {
 }
 
 // scalePitchClasses は調の音階のピッチクラスを返す（mollは和声的短音階）。
-func scalePitchClasses(key keySignature) [7]int {
+func scalePitchClasses(key Key) [7]int {
 	steps := [6]int{2, 2, 1, 2, 2, 2}
 	if key.mode == "moll" {
 		steps = [6]int{2, 1, 2, 2, 1, 3}
@@ -80,7 +80,7 @@ func borrowFromDominant(t chordTemplate) chordTemplate {
 }
 
 // chordTemplates は調に対する候補和音テンプレートの一覧を作る。
-func chordTemplates(key keySignature) []chordTemplate {
+func chordTemplates(key Key) []chordTemplate {
 	scale := scalePitchClasses(key)
 	var ts []chordTemplate
 	for d := range 6 { // I〜VI。VIIの三和音はV7の根音省略形として扱う

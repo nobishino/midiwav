@@ -1,4 +1,4 @@
-package main
+package synth
 
 import (
 	"encoding/binary"
@@ -6,13 +6,13 @@ import (
 )
 
 const (
-	PCM           = 1
+	formatPCM     = 1
 	fmtChunkSize  = 16 // fixed size for PCM
 	sampleRate    = 44100 / 2
 	channelNum    = 1 // mono
-	BitsPerSample = 16
-	ByteRate      = sampleRate * channelNum * BitsPerSample / 8
-	BlockAlign    = channelNum * BitsPerSample / 8
+	bitsPerSample = 16
+	byteRate      = sampleRate * channelNum * bitsPerSample / 8
+	blockAlign    = channelNum * bitsPerSample / 8
 )
 
 func writeWAVE(w io.Writer, normalizedSamples []int16) error {
@@ -35,7 +35,7 @@ func writeWAVE(w io.Writer, normalizedSamples []int16) error {
 	if err := lew.WriteUint32(fmtChunkSize); err != nil {
 		return err
 	}
-	if err := lew.WriteUint16(PCM); err != nil {
+	if err := lew.WriteUint16(formatPCM); err != nil {
 		return err
 	}
 	if err := lew.WriteUint16(channelNum); err != nil {
@@ -44,13 +44,13 @@ func writeWAVE(w io.Writer, normalizedSamples []int16) error {
 	if err := lew.WriteUint32(sampleRate); err != nil {
 		return err
 	}
-	if err := lew.WriteUint32(ByteRate); err != nil {
+	if err := lew.WriteUint32(byteRate); err != nil {
 		return err
 	}
-	if err := lew.WriteUint16(BlockAlign); err != nil {
+	if err := lew.WriteUint16(blockAlign); err != nil {
 		return err
 	}
-	if err := lew.WriteUint16(BitsPerSample); err != nil {
+	if err := lew.WriteUint16(bitsPerSample); err != nil {
 		return err
 	}
 
