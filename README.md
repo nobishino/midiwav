@@ -25,13 +25,38 @@ svg2png_path = "rsvg-convert"   # SVG→PNG。brew install librsvg などで導�
 
 ## Running
 
+### 監視モード
+
+設定ファイルの `[[target]]` ディレクトリを10秒ごとに走査し、新しいMIDIに対して
+WAV合成・和声添削・楽譜生成・Discord投稿を行います。
+
 ```sh
 midiwav -config /path/to/config.toml
 ```
 
+### check サブコマンド（分析のみ）
+
+4声体和声の添削だけを1回実行します。監視モードと違い副作用がありません
+（WAV・楽譜・Discord投稿なし）。スクリプトやCI、対話的な添削フローから使う想定です。
+
+```sh
+midiwav check [-key <調>] [-format text|json] <file.mid>...
+```
+
+- 調はファイル名のドイツ語音名（例: `kadai3_es-moll.mid`）から読み取ります。
+  `-key es-moll` のように指定するとファイル名より優先されます。
+- `-format json` は和音記号・コードネーム・SATB音名つきの構造化データを
+  ファイル数によらず配列で出力します（フィールドは追加されることがあります）。
+- 終了コード: `0`=禁則なし、`1`=禁則（⚠）が1件以上、`2`=実行エラー。
+
+```sh
+$ midiwav check kadai10_es-moll.mid            # 添削レポートを表示
+$ midiwav check -format json *.mid | jq '.[].summary'
+```
+
 ## Package Layout
 
-- `.` (main): CLI。ディレクトリ監視・設定・Discord投稿
+- `.` (main): CLI。ディレクトリ監視・設定・Discord投稿・`check` サブコマンド
 - `harmony`: 4声体和声の分析・添削（禁則チェック、和音記号、コードネーム）
 - `synth`: MIDIからの矩形波によるWAV合成
 

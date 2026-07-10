@@ -73,6 +73,13 @@ The application takes a TOML configuration file (see `config.toml.example` and `
 - Each `[[target]]` entry has `dir` (required), `recursive`, and `discord_webhook_url` (optional)
 - The app runs in watch mode, checking every 10 seconds for new/updated MIDI files
 
+There is also a side-effect-free subcommand that runs only the harmony analysis
+(no WAV/score/Discord output) and exits with 0 (clean), 1 (violations), or 2 (error):
+
+```bash
+./midiwav check [-key <german-key>] [-format text|json] file.mid...
+```
+
 ## Project Layout and Architecture
 
 ### Package Structure
@@ -80,6 +87,7 @@ The application takes a TOML configuration file (see `config.toml.example` and `
 .
 ├── .github/workflows/      # ci.yml (tests+fmt+tidy), gorelease.yml, tagpr.yml
 ├── main.go                 # CLI entry point, watch loop, per-file orchestration
+├── check.go                # `check` subcommand: analysis only, text/json output
 ├── config.go               # TOML config loading ([[target]] entries)
 ├── scan_directory.go       # Finds MIDI files whose WAV is missing or stale
 ├── post_discord.go         # Discord webhook posting (multipart upload)

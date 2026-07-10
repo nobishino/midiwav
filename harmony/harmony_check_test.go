@@ -35,6 +35,35 @@ func TestParseKeyFromFilename(t *testing.T) {
 	}
 }
 
+func TestParseKey(t *testing.T) {
+	tests := []struct {
+		name string
+		want string
+		ok   bool
+	}{
+		{"es-moll", "Eb-moll", true},
+		{"As-dur", "Ab-dur", true},
+		{"fis_dur", "F#-dur", true},
+		{"C-Dur", "C-dur", true},
+		{" h-moll ", "B-moll", true}, // 前後の空白は無視する
+		{"b-dur", "Bb-dur", true},
+		{"x-moll", "", false},
+		{"課題1_h-moll", "", false}, // 文字列全体が調名であることを要求する
+		{"moll", "", false},
+		{"", "", false},
+	}
+	for _, tt := range tests {
+		key, ok := ParseKey(tt.name)
+		if ok != tt.ok {
+			t.Errorf("ParseKey(%q) ok = %v, want %v", tt.name, ok, tt.ok)
+			continue
+		}
+		if ok && key.String() != tt.want {
+			t.Errorf("ParseKey(%q) = %s, want %s", tt.name, key, tt.want)
+		}
+	}
+}
+
 func TestBuildSpellingTable(t *testing.T) {
 	mustKey := func(name string) Key {
 		t.Helper()

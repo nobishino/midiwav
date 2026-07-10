@@ -17,6 +17,12 @@ import (
 )
 
 func main() {
+	// サブコマンド: check（分析のみ・副作用なし）。
+	// 第1引数が check 以外の場合は従来どおり watch モードとして動く。
+	if len(os.Args) > 1 && os.Args[1] == "check" {
+		os.Exit(runCheck(os.Args[2:], os.Stdout, os.Stderr))
+	}
+
 	configPath := flag.String("config", "", "Path to TOML configuration file")
 	flag.Parse()
 
