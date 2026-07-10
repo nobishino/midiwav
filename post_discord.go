@@ -7,11 +7,15 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
-	"os"
-	"path/filepath"
 )
 
-func postToDiscord(webhookURL string, fs ...*os.File) error {
+// discordFile is a file attached to a Discord webhook post.
+type discordFile struct {
+	name string
+	r    io.Reader
+}
+
+func postToDiscord(webhookURL string, content string, files ...discordFile) error {
 	if webhookURL == "" {
 		return fmt.Errorf("webhook URL is empty")
 	}
@@ -20,7 +24,7 @@ func postToDiscord(webhookURL string, fs ...*os.File) error {
 
 	// payload_json
 	payload := map[string]any{
-		"content": "MIDIファイルとWAVファイルを保存しました",
+		"content": content,
 	}
 	pb, err := json.Marshal(payload)
 	if err != nil {
@@ -30,18 +34,12 @@ func postToDiscord(webhookURL string, fs ...*os.File) error {
 		return err
 	}
 
-	for i, f := range fs {
-		// ファイル先頭に戻す
-		if _, err := f.Seek(0, 0); err != nil {
-			return err
-		}
-
-		// file
-		fw, err := w.CreateFormFile(fmt.Sprintf("file[%d]", i), filepath.Base(f.Name()))
+	for i, f := range files {
+		fw, err := w.CreateFormFile(fmt.Sprintf("file[%d]", i), f.name)
 		if err != nil {
 			return err
 		}
-		if _, err := io.Copy(fw, f); err != nil {
+		if _, err := io.Copy(fw, f.r); err != nil {
 			return err
 		}
 	}

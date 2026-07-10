@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
+
+	"gitlab.com/gomidi/midi/v2/smf"
 )
 
 func main() {
@@ -95,10 +99,59 @@ func processFile(srcPath string, discordWebhookURL string) error {
 		return fmt.Errorf("failed to convert MIDI to WAV: %w", err)
 	}
 
+	report := checkHarmony(srcMIDI, srcPath)
+	if report != "" {
+		fmt.Print(report)
+	}
+
 	if discordWebhookURL != "" {
-		if err := postToDiscord(discordWebhookURL, srcMIDI, dstWAV); err != nil {
+		content, files := buildDiscordPost(srcMIDI, dstWAV, report)
+		if err := postToDiscord(discordWebhookURL, content, files...); err != nil {
 			log.Println(err)
 		}
 	}
 	return nil
+}
+
+// checkHarmony runs the harmony rule check if the MIDI looks like a
+// four-part chorale. It returns an empty report otherwise.
+func checkHarmony(srcMIDI *os.File, srcPath string) string {
+	if _, err := srcMIDI.Seek(0, 0); err != nil {
+		return ""
+	}
+	smfData, err := smf.ReadFrom(srcMIDI)
+	if err != nil {
+		return ""
+	}
+	report, ok := harmonyReport(smfData, srcPath)
+	if !ok {
+		return ""
+	}
+	return report
+}
+
+// discordContentLimit is Discord's maximum message content length in characters.
+const discordContentLimit = 2000
+
+func buildDiscordPost(srcMIDI, dstWAV *os.File, report string) (string, []discordFile) {
+	content := "MIDIファイルとWAVファイルを保存しました"
+	var files []discordFile
+	for _, f := range []*os.File{srcMIDI, dstWAV} {
+		if _, err := f.Seek(0, 0); err != nil {
+			log.Println(err)
+			continue
+		}
+		files = append(files, discordFile{name: filepath.Base(f.Name()), r: f})
+	}
+	if report != "" {
+		withReport := content + "\n4声体和声の添削結果:\n```\n" + report + "```"
+		if utf8.RuneCountInString(withReport) <= discordContentLimit {
+			content = withReport
+		} else {
+			content += "\n4声体和声の添削結果が長いためファイルとして添付します"
+			name := strings.TrimSuffix(filepath.Base(srcMIDI.Name()), ".mid") + "-check.txt"
+			files = append(files, discordFile{name: name, r: strings.NewReader(report)})
+		}
+	}
+	return content, files
 }
