@@ -20,7 +20,7 @@
   5小節5拍目  V9(根音省略形・第3転回位置) [Abdim7] B:Ab3 T:Cb4 A:F4 S:D5
   5小節7拍目  I(第1転回位置) [Ebm/Gb] B:Gb3 T:Bb3 A:Bb4 S:Eb5
   6小節1拍目  VI(基本位置) [Cb] B:Cb3 T:Cb4 A:Gb4 S:Eb5
-  6小節3拍目  V調のV9(増六・根音省略形・第2転回位置) [Cb7] B:Cb4 T:Eb4 A:A4 S:Eb5
+  6小節3拍目  V調のV7(増六・根音省略形・第2転回位置) [Cb7] B:Cb4 T:Eb4 A:A4 S:Eb5
   6小節5拍目  V(基本位置) [Bb] B:Bb3 T:F4 A:Bb4 S:D5
   7小節1拍目  I(基本位置) [Ebm] B:Eb4 T:Gb4 A:Bb4 S:Eb5
   7小節3拍目  II(第1転回位置) [Fdim/Ab] B:Ab3 T:Ab4 A:Cb5 S:F5
