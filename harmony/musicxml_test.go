@@ -96,8 +96,8 @@ func TestMusicXMLBasic(t *testing.T) {
 		"<sign>F</sign>",
 		"<step>C</step>",
 		"<type>whole</type>",
-		"<words>I(基本位置)</words>",
-		"<words>V(基本位置)</words>",
+		"<words>I</words>",
+		"<words>V</words>",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("output should contain %s, got:\n%s", want, got)

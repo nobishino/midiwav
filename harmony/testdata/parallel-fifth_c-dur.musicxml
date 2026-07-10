@@ -29,7 +29,7 @@
       </attributes>
       <direction placement="below">
         <direction-type>
-          <words>IV(基本位置)</words>
+          <words>IV</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -90,7 +90,7 @@
     <measure number="2">
       <direction placement="below">
         <direction-type>
-          <words>V(基本位置)</words>
+          <words>V</words>
         </direction-type>
         <staff>2</staff>
       </direction>

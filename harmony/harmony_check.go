@@ -409,10 +409,11 @@ func checkSpelled(ch *chorale, table [12]noteSpelling) []Issue {
 
 // Chord は和音一覧の1項目。
 type Chord struct {
-	Pos    string    // 位置（例: "1小節1拍目"）
-	Symbol string    // 和音記号（度数・種類・転回位置）。調が不明の場合は空
-	Name   string    // コードネーム（例: "C", "G7/F"）
-	Notes  [4]string // S, A, T, B の順の音名
+	Pos         string    // 位置（例: "1小節1拍目"）
+	Symbol      string    // 和音記号（度数・種類・転回位置）。調が不明の場合は空
+	ShortSymbol string    // 楽譜表示用の短い和音記号（例: "V₉(r-)"）。調が不明の場合は空
+	Name        string    // コードネーム（例: "C", "G7/F"）
+	Notes       [4]string // S, A, T, B の順の音名
 }
 
 // Report は4声体和声の分析結果。
@@ -442,7 +443,13 @@ func Analyze(s *smf.SMF, key *Key) (*Report, bool) {
 	for _, c := range ch.chords {
 		chord := Chord{Pos: ch.pos(c.beat), Name: chordName(c.notes, table)}
 		if key != nil {
-			chord.Symbol = chordSymbol(c.notes, templates)
+			if a, ok := analyzeChord(c.notes, templates); ok {
+				chord.Symbol = a.String()
+				chord.ShortSymbol = a.ShortString()
+			} else {
+				chord.Symbol = "?"
+				chord.ShortSymbol = "?"
+			}
 		}
 		for i, n := range c.notes {
 			chord.Notes[i] = noteName(n, table)

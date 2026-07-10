@@ -298,9 +298,10 @@ func (r *Report) MusicXML() ([]byte, error) {
 			}
 			staff, stem := voiceStaffStem(voice)
 			for si, s := range msegs {
-				// 和音記号は最初の声部の、和音が始まる位置にだけ付ける
+				// 和音記号は最初の声部の、和音が始まる位置にだけ付ける。
+				// 楽譜では転回位置などを省いた短い表記を使う（#47）
 				if voice == 1 && s.chordIdx >= 0 && !s.tieStop {
-					if sym := r.Chords[s.chordIdx].Symbol; sym != "" {
+					if sym := r.Chords[s.chordIdx].ShortSymbol; sym != "" {
 						measure.Items = append(measure.Items, &mxlDirection{
 							Placement: "below",
 							Words:     sym,
