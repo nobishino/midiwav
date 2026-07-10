@@ -174,8 +174,10 @@ func intervalQuality(n1, n2 uint8, table [12]noteSpelling) (int, int, string) {
 
 // chord は同時に発音される4声の音（S, A, T, B の順）。
 type chord struct {
-	beat  float64 // 曲頭からの拍数（4分音符換算）
-	notes [4]uint8
+	beat     float64 // 曲頭からの拍数（4分音符換算）
+	ticks    int64   // 曲頭からのオンセット（ティック）
+	durTicks int64   // 音価（ティック）。次の和音のオンセットまで（最終和音は小節末まで）の近似
+	notes    [4]uint8
 }
 
 // chorale は4声体とみなしたMIDIから抽出した和音列。
@@ -183,6 +185,9 @@ type chorale struct {
 	chords          []chord
 	beatsPerMeasure float64 // 1小節の拍数（4分音符換算）
 	beatUnit        float64 // 1拍の長さ（4分音符換算）
+	meterNum        int     // 拍子の分子
+	meterDenom      int     // 拍子の分母
+	ticksPerQuarter int     // 4分音符あたりのティック数
 }
 
 func (c *chorale) pos(beat float64) string {
@@ -245,16 +250,34 @@ func extractChorale(s *smf.SMF) (*chorale, bool) {
 			notes[i] = n
 		}
 		if all {
-			chords = append(chords, chord{beat: float64(o) / float64(metricTicks), notes: notes})
+			chords = append(chords, chord{beat: float64(o) / float64(metricTicks), ticks: o, notes: notes})
 		}
 	}
 	if len(chords) == 0 {
 		return nil, false
 	}
+
+	// 音価はnote-offを読まず「次の和音のオンセットまで」とする近似。
+	// 最終和音はその小節の末尾まで伸ばす。
+	tpq := int64(metricTicks)
+	measureTicks := tpq * 4 * int64(num) / int64(denom)
+	for i := range chords {
+		if i+1 < len(chords) {
+			chords[i].durTicks = chords[i+1].ticks - chords[i].ticks
+		} else if measureTicks > 0 {
+			chords[i].durTicks = measureTicks - chords[i].ticks%measureTicks
+		} else {
+			chords[i].durTicks = tpq
+		}
+	}
+
 	return &chorale{
 		chords:          chords,
 		beatsPerMeasure: float64(num) * 4 / float64(denom),
 		beatUnit:        4 / float64(denom),
+		meterNum:        int(num),
+		meterDenom:      int(denom),
+		ticksPerQuarter: int(metricTicks),
 	}, true
 }
 
@@ -397,6 +420,7 @@ type Report struct {
 	Key    *Key // 調。不明なら nil
 	Chords []Chord
 	Issues []Issue
+	Score  *Score // 楽譜出力用の中間表現。Chords と同順で対応する
 }
 
 // Analyze は4声体和声の禁則チェックを実行し、分析結果を返す。
@@ -414,7 +438,7 @@ func Analyze(s *smf.SMF, key *Key) (*Report, bool) {
 		templates = chordTemplates(*key)
 	}
 
-	r := &Report{Key: key}
+	r := &Report{Key: key, Score: buildScore(ch, key, table)}
 	for _, c := range ch.chords {
 		chord := Chord{Pos: ch.pos(c.beat), Name: chordName(c.notes, table)}
 		if key != nil {
