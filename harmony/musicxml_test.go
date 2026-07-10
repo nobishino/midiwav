@@ -88,6 +88,7 @@ func TestMusicXMLBasic(t *testing.T) {
 	}
 
 	for _, want := range []string{
+		`<part-name print-object="no">SATB</part-name>`,
 		"<fifths>0</fifths>",
 		"<beats>4</beats>",
 		"<beat-type>4</beat-type>",

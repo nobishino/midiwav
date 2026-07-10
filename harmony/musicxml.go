@@ -27,8 +27,15 @@ type mxlPartList struct {
 }
 
 type mxlScorePart struct {
-	ID   string `xml:"id,attr"`
-	Name string `xml:"part-name"`
+	ID   string      `xml:"id,attr"`
+	Name mxlPartName `xml:"part-name"`
+}
+
+// mxlPartName はパート名。part-name はMusicXMLの必須要素だが、楽譜への
+// 表示は不要なため print-object="no" で抑制する（#48）。
+type mxlPartName struct {
+	PrintObject string `xml:"print-object,attr"`
+	Value       string `xml:",chardata"`
 }
 
 type mxlPart struct {
@@ -348,7 +355,7 @@ func (r *Report) MusicXML() ([]byte, error) {
 	doc := mxlScorePartwise{
 		Version: "4.0",
 		PartList: mxlPartList{ScoreParts: []mxlScorePart{
-			{ID: "P1", Name: "SATB"},
+			{ID: "P1", Name: mxlPartName{PrintObject: "no", Value: "SATB"}},
 		}},
 		Parts: []mxlPart{{ID: "P1", Measures: measures}},
 	}
