@@ -162,6 +162,83 @@ func TestMusicXMLTieAcrossBarline(t *testing.T) {
 	}
 }
 
+func TestComputeAccidentals(t *testing.T) {
+	esmoll, _ := ParseKeyFromFilename("es-moll.mid")
+	base := keyAlters(keyFifths(esmoll)) // 6♭: B E A D G C が -1
+	if base["D"] != -1 || base["F"] != 0 {
+		t.Fatalf("keyAlters(-6) = %v, want D=-1 F=0", base)
+	}
+
+	sc := &Score{Chords: []ScoreChord{
+		{Notes: [4]ScoreNote{{"D", 0, 5}, {"F", 0, 4}, {"C", -1, 4}, {"A", -1, 2}}},
+		{Notes: [4]ScoreNote{{"D", 0, 5}, {"F", 0, 4}, {"B", -1, 3}, {"E", -1, 3}}},
+	}}
+	segs := []segment{
+		{chordIdx: 0, start: 0, dur: 960},
+		{chordIdx: 1, start: 960, dur: 960},
+	}
+	acc := computeAccidentals(segs, sc, base)
+	// Es-mollで導音D（ナチュラル）には natural が付く
+	if acc[[2]int{0, 1}] != "natural" {
+		t.Errorf("first D5 should get natural, got %q", acc[[2]int{0, 1}])
+	}
+	// 同じ小節内の同じ幹音・オクターブには2度目は付けない
+	if _, ok := acc[[2]int{1, 1}]; ok {
+		t.Error("second D5 in the same measure should not get an accidental")
+	}
+	// 調号どおりの音（Cb, Ab, Bb, Eb）と調号にない幹音のナチュラル（F）には付けない
+	for _, k := range [][2]int{{0, 2}, {0, 3}, {0, 4}, {1, 2}, {1, 3}, {1, 4}} {
+		if a, ok := acc[k]; ok {
+			t.Errorf("note at %v should not get an accidental, got %q", k, a)
+		}
+	}
+
+	// タイの後半には付けない
+	tied := []segment{
+		{chordIdx: 0, start: 0, dur: 960, tieStop: true},
+	}
+	if acc := computeAccidentals(tied, sc, base); len(acc) != 0 {
+		t.Errorf("tie-stop note should not get an accidental, got %v", acc)
+	}
+
+	// 同時刻にSとAが同じ音（ユニゾン）なら片方にだけ付ける
+	unison := &Score{Chords: []ScoreChord{
+		{Notes: [4]ScoreNote{{"D", 0, 5}, {"D", 0, 5}, {"B", -1, 3}, {"G", -1, 2}}},
+	}}
+	acc = computeAccidentals([]segment{{chordIdx: 0, start: 0, dur: 960}}, unison, base)
+	if acc[[2]int{0, 1}] != "natural" {
+		t.Error("unison: S should get the natural")
+	}
+	if _, ok := acc[[2]int{0, 2}]; ok {
+		t.Error("unison: A should not get a duplicate accidental")
+	}
+}
+
+func TestMusicXMLNaturalAccidental(t *testing.T) {
+	// Es-moll の導音D（ナチュラル）に <accidental>natural</accidental> が付く（#49）
+	key, _ := ParseKeyFromFilename("es-moll.mid")
+	s := buildChoraleSMF(t,
+		[4]uint8{74, 65, 59, 44}, // D5 F4 Cb4 Ab2 (V9根省)
+		[4]uint8{75, 70, 66, 51}, // Eb5 Bb4 Gb4 Eb3 (I)
+	)
+	r, ok := Analyze(s, &key)
+	if !ok {
+		t.Fatal("Analyze failed")
+	}
+	data, err := r.MusicXML()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(data)
+	if !strings.Contains(got, "<accidental>natural</accidental>") {
+		t.Errorf("output should contain natural accidental for D5, got:\n%s", got)
+	}
+	// 調号どおりの音には臨時記号を付けない（naturalは1つだけ）
+	if n := strings.Count(got, "<accidental>"); n != 1 {
+		t.Errorf("got %d accidentals, want 1", n)
+	}
+}
+
 // TestMusicXMLGolden は testdata/*.mid のMusicXML出力をゴールデンファイル
 // （<case>.musicxml）と照合する。go test -update で生成・更新できる。
 func TestMusicXMLGolden(t *testing.T) {
