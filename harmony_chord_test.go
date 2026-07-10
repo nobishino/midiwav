@@ -79,19 +79,58 @@ func TestHarmonyReportChordSymbols(t *testing.T) {
 	if !ok {
 		t.Fatal("harmonyReport: not recognized as a 4-voice chorale")
 	}
-	if !strings.Contains(report, "I(基本位置) S:C5") {
-		t.Errorf("report should contain chord symbol for the first chord, got:\n%s", report)
+	if !strings.Contains(report, "I(基本位置) [C] S:C5") {
+		t.Errorf("report should contain chord symbol and name for the first chord, got:\n%s", report)
 	}
-	if !strings.Contains(report, "V7(第3転回位置) S:D5") {
-		t.Errorf("report should contain chord symbol for the second chord, got:\n%s", report)
+	if !strings.Contains(report, "V7(第3転回位置) [G7/F] S:D5") {
+		t.Errorf("report should contain chord symbol and name for the second chord, got:\n%s", report)
 	}
 
-	// 調が読み取れない場合は和音記号を付けない
+	// 調が読み取れない場合は和音記号を付けないが、コードネームは表示する
 	noKey, ok := harmonyReport(s, "nokey.mid")
 	if !ok {
 		t.Fatal("harmonyReport: not recognized as a 4-voice chorale")
 	}
 	if strings.Contains(noKey, "基本位置") {
 		t.Errorf("report without key should not contain chord symbols, got:\n%s", noKey)
+	}
+	if !strings.Contains(noKey, "[C] S:C5") {
+		t.Errorf("report without key should still contain chord names, got:\n%s", noKey)
+	}
+}
+
+func TestChordName(t *testing.T) {
+	cdur, _ := parseKeyFromFilename("c-dur.mid")
+	cdurTable := buildSpellingTable(cdur)
+	amoll, _ := parseKeyFromFilename("a-moll.mid")
+	amollTable := buildSpellingTable(amoll)
+	esmoll, _ := parseKeyFromFilename("es-moll.mid")
+	esmollTable := buildSpellingTable(esmoll)
+
+	tests := []struct {
+		name  string
+		notes [4]uint8 // S A T B
+		table [12]noteSpelling
+		want  string
+	}{
+		{"メジャー", [4]uint8{72, 67, 64, 60}, cdurTable, "C"},           // C5 G4 E4 C4
+		{"メジャー転回", [4]uint8{72, 67, 60, 52}, cdurTable, "C/E"},       // C5 G4 C4 E3
+		{"マイナー7th", [4]uint8{72, 69, 65, 50}, cdurTable, "Dm7"},      // C5 A4 F4 D3
+		{"属7転回", [4]uint8{74, 71, 67, 53}, cdurTable, "G7/F"},        // D5 B4 G4 F3
+		{"属7第5音省略", [4]uint8{77, 71, 67, 55}, cdurTable, "G7"},       // F5 B4 G4 G3
+		{"ディミニッシュ", [4]uint8{74, 65, 62, 59}, cdurTable, "Bdim"},     // D5 F4 D4 B3
+		{"ハーフディミニッシュ", [4]uint8{69, 65, 62, 59}, cdurTable, "Bm7-5"}, // A4 F4 D4 B3
+		{"メジャー7th", [4]uint8{71, 67, 64, 60}, cdurTable, "Cmaj7"},    // B4 G4 E4 C4
+		{"dim7", [4]uint8{77, 71, 62, 56}, amollTable, "G#dim7"},     // F5 B4 D4 G#3
+		{"オーギュメント", [4]uint8{71, 67, 63, 51}, esmollTable, "Ebaug"},  // Cb5 G4 Eb4 Eb3
+		{"フラット綴り", [4]uint8{75, 70, 66, 51}, esmollTable, "Ebm"},     // Eb5 Bb4 Gb4 Eb3
+		{"パワーコード", [4]uint8{72, 67, 60, 48}, cdurTable, "C5"},        // C5 G4 C4 C3
+		{"3度のみ", [4]uint8{76, 72, 64, 48}, cdurTable, "C"},           // E5 C5 E4 C3
+		{"ユニゾンは判定不能", [4]uint8{72, 60, 60, 48}, cdurTable, "?"},      // C5 C4 C4 C3
+	}
+	for _, tt := range tests {
+		if got := chordName(tt.notes, tt.table); got != tt.want {
+			t.Errorf("%s: chordName(%v) = %s, want %s", tt.name, tt.notes, got, tt.want)
+		}
 	}
 }

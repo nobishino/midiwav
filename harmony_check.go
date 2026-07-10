@@ -408,6 +408,7 @@ func harmonyReport(s *smf.SMF, path string) (string, bool) {
 		if hasKey {
 			fmt.Fprintf(&b, " %s", chordSymbol(c.notes, templates))
 		}
+		fmt.Fprintf(&b, " [%s]", chordName(c.notes, table))
 		for i, n := range c.notes {
 			fmt.Fprintf(&b, " %s:%s", voiceNames[i], noteName(n, table))
 		}
