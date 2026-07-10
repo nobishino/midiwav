@@ -76,13 +76,28 @@ func (k Key) String() string {
 	return noteLetters[k.tonic.letter] + accidentalStr[k.tonic.acc] + "-" + k.mode
 }
 
-var keyPattern = regexp.MustCompile(`(?:^|[^a-z])([a-h](?:is|es|s)?)[-_ ]?(dur|moll)`)
+const keyFragment = `([a-h](?:is|es|s)?)[-_ ]?(dur|moll)`
+
+var (
+	keyPattern     = regexp.MustCompile(`(?:^|[^a-z])` + keyFragment)
+	keyNamePattern = regexp.MustCompile(`^` + keyFragment + `$`)
+)
 
 // ParseKeyFromFilename はファイル名のドイツ語音名から調を読み取る（例: es-moll.mid）。
 func ParseKeyFromFilename(path string) (Key, bool) {
 	base := filepath.Base(path)
 	stem := strings.ToLower(strings.TrimSuffix(base, filepath.Ext(base)))
-	m := keyPattern.FindStringSubmatch(stem)
+	return parseKeyMatch(keyPattern.FindStringSubmatch(stem))
+}
+
+// ParseKey はドイツ語音名の調名を解釈する（例: "es-moll", "As-dur"）。
+// ParseKeyFromFilename と違い、文字列全体が調名であることを要求する。
+func ParseKey(name string) (Key, bool) {
+	s := strings.ToLower(strings.TrimSpace(name))
+	return parseKeyMatch(keyNamePattern.FindStringSubmatch(s))
+}
+
+func parseKeyMatch(m []string) (Key, bool) {
 	if m == nil {
 		return Key{}, false
 	}
