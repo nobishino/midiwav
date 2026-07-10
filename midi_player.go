@@ -101,8 +101,8 @@ func summarizeSamples(sampleTracks [][]float64) []int16 {
 			}
 		}
 		sums[i] = sum
-		if sums[i] > maxDeviation {
-			maxDeviation = sums[i]
+		if math.Abs(sums[i]) > maxDeviation {
+			maxDeviation = math.Abs(sums[i])
 		}
 	}
 	return normalizeToInt16(sums, maxDeviation)
@@ -110,6 +110,10 @@ func summarizeSamples(sampleTracks [][]float64) []int16 {
 
 func normalizeToInt16(samples []float64, maxDeviation float64) []int16 {
 	normalized := make([]int16, len(samples))
+	if maxDeviation == 0 {
+		// 全サンプルが無音。0除算（NaN）を避け、無音のまま返す。
+		return trimSilence(normalized)
+	}
 	for i, v := range samples {
 		normalized[i] = int16((v / maxDeviation) * (1<<15 - 1))
 	}
