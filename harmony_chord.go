@@ -193,3 +193,77 @@ func b2i(b bool) int {
 	}
 	return 0
 }
+
+// chordQuality はコードネームの種類。intervals は根音からの半音数の集合（0を含む）。
+type chordQuality struct {
+	intervals []int
+	suffix    string
+}
+
+// chordQualities は優先順位順（上ほど優先）。三和音・七の和音の完全形を先に、
+// 第5音省略形と2音の形を後に置く。
+var chordQualities = []chordQuality{
+	{[]int{0, 4, 7}, ""},
+	{[]int{0, 3, 7}, "m"},
+	{[]int{0, 3, 6}, "dim"},
+	{[]int{0, 4, 8}, "aug"},
+	{[]int{0, 4, 7, 10}, "7"},
+	{[]int{0, 3, 7, 10}, "m7"},
+	{[]int{0, 4, 7, 11}, "maj7"},
+	{[]int{0, 3, 7, 11}, "mM7"},
+	{[]int{0, 3, 6, 10}, "m7-5"},
+	{[]int{0, 3, 6, 9}, "dim7"},
+	// 第5音省略の七の和音
+	{[]int{0, 4, 10}, "7"},
+	{[]int{0, 3, 10}, "m7"},
+	{[]int{0, 4, 11}, "maj7"},
+	// 2音
+	{[]int{0, 4}, ""},
+	{[]int{0, 3}, "m"},
+	{[]int{0, 7}, "5"},
+}
+
+// pitchClassName はピッチクラスの音名（オクターブなし）を返す。
+func pitchClassName(pc int, table [12]noteSpelling) string {
+	sp := table[pc]
+	return noteLetters[sp.letter] + accidentalStr[sp.acc]
+}
+
+// chordName は4音のコードネーム（例: "C", "Dm7", "G7/F"）を返す。
+// バスが根音でない場合はスラッシュでバス音を付ける。調に依存せず判定でき、
+// 綴りは渡された表に従う。どの形にも一致しなければ "?"。
+func chordName(notes [4]uint8, table [12]noteSpelling) string {
+	var pcSet [12]bool
+	bass := notes[0]
+	for _, n := range notes {
+		pcSet[n%12] = true
+		if n < bass {
+			bass = n
+		}
+	}
+	bassPC := int(bass % 12)
+	// 根音候補は実施に含まれる音。バスを最優先し、残りはピッチクラス昇順
+	roots := []int{bassPC}
+	for pc := range 12 {
+		if pcSet[pc] && pc != bassPC {
+			roots = append(roots, pc)
+		}
+	}
+	for _, q := range chordQualities {
+		for _, root := range roots {
+			var want [12]bool
+			for _, iv := range q.intervals {
+				want[mod12(root+iv)] = true
+			}
+			if want != pcSet {
+				continue
+			}
+			name := pitchClassName(root, table) + q.suffix
+			if root != bassPC {
+				name += "/" + pitchClassName(bassPC, table)
+			}
+			return name
+		}
+	}
+	return "?"
+}
