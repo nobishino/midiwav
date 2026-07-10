@@ -31,6 +31,7 @@ func main() {
 
 	exec := &executer{
 		targets:   config.Targets,
+		notation:  config.Notation,
 		watchMode: true, // TODO: make configurable
 	}
 	if err := exec.start(); err != nil {
@@ -40,6 +41,7 @@ func main() {
 
 type executer struct {
 	targets   []Target
+	notation  Notation
 	watchMode bool
 }
 
@@ -76,7 +78,7 @@ func (e *executer) processTarget(target Target) error {
 	log.Printf("Found %d unprocessed MIDI files in %s.\n", len(unprocessed), target.Dir)
 
 	for _, srcPath := range unprocessed {
-		if err := processFile(srcPath, target.DiscordWebhookURL); err != nil {
+		if err := processFile(srcPath, target.DiscordWebhookURL, e.notation); err != nil {
 			log.Printf("Error processing %s: %v", srcPath, err)
 			continue
 		}
@@ -84,7 +86,7 @@ func (e *executer) processTarget(target Target) error {
 	return nil
 }
 
-func processFile(srcPath string, discordWebhookURL string) error {
+func processFile(srcPath string, discordWebhookURL string, notation Notation) error {
 	fmt.Println("Processing:", srcPath)
 	srcMIDI, err := os.Open(srcPath)
 	if err != nil {
@@ -107,13 +109,17 @@ func processFile(srcPath string, discordWebhookURL string) error {
 		return fmt.Errorf("failed to convert MIDI to WAV: %w", err)
 	}
 
-	report := checkHarmony(smfData, srcPath)
-	if report != "" {
-		fmt.Print(report)
+	var reportText string
+	var notationFiles []discordFile
+	if report, ok := checkHarmony(smfData, srcPath); ok {
+		reportText = report.Format()
+		fmt.Print(reportText)
+		notationFiles = notationAttachments(report, srcPath, notation)
 	}
 
 	if discordWebhookURL != "" {
-		content, files := buildDiscordPost(srcMIDI, dstWAV, report)
+		content, files := buildDiscordPost(srcMIDI, dstWAV, reportText)
+		files = append(files, notationFiles...)
 		if err := postToDiscord(discordWebhookURL, content, files...); err != nil {
 			log.Println(err)
 		}
@@ -122,18 +128,14 @@ func processFile(srcPath string, discordWebhookURL string) error {
 }
 
 // checkHarmony runs the harmony rule check if the MIDI looks like a
-// four-part chorale. It returns an empty report otherwise. The key is
+// four-part chorale. It returns ok=false otherwise. The key is
 // taken from the filename (e.g. es-moll.mid).
-func checkHarmony(smfData *smf.SMF, srcPath string) string {
+func checkHarmony(smfData *smf.SMF, srcPath string) (*harmony.Report, bool) {
 	var key *harmony.Key
 	if k, ok := harmony.ParseKeyFromFilename(srcPath); ok {
 		key = &k
 	}
-	report, ok := harmony.Analyze(smfData, key)
-	if !ok {
-		return ""
-	}
-	return report.Format()
+	return harmony.Analyze(smfData, key)
 }
 
 // discordContentLimit is Discord's maximum message content length in characters.

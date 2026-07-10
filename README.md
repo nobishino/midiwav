@@ -13,6 +13,14 @@ discord_webhook_url = "https://discord.com/api/webhooks/XXX/YYY"
 dir = "/abs/path/to/dir2"
 recursive = true # trueの場合、配下のディレクトリを再帰的に検索します。デフォルトはfalseです。
 # discord_webhook_url を省略すると Discord へ投稿しません。
+
+# 楽譜画像の生成に使う外部コマンド（セクションごと省略可）。
+# 4声体和声とみなせるMIDIに対して、楽譜（.musicxml とPNG画像）を生成・添付します。
+# コマンドが見つからない場合、その段階までのファイル生成にとどめます
+# （verovioなし → .musicxml のみ、rsvg-convertなし → SVGのまま）。
+[notation]
+verovio_path = "verovio"        # MusicXML→SVG。brew install verovio などで導入
+svg2png_path = "rsvg-convert"   # SVG→PNG。brew install librsvg などで導入
 ```
 
 ## Running
