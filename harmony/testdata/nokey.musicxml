@@ -26,7 +26,7 @@
       </attributes>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">C</words>
+          <words default-y="-100" font-style="normal">C</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -87,7 +87,7 @@
     <measure number="2">
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">G</words>
+          <words default-y="-100" font-style="normal">G</words>
         </direction-type>
         <staff>2</staff>
       </direction>
