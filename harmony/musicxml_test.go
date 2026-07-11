@@ -97,8 +97,8 @@ func TestMusicXMLBasic(t *testing.T) {
 		"<sign>F</sign>",
 		"<step>C</step>",
 		"<type>whole</type>",
-		`<words default-y="-100">C</words>`,
-		`<words default-y="-100">G</words>`,
+		`<words default-y="-100" font-style="normal">C</words>`,
+		`<words default-y="-100" font-style="normal">G</words>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("output should contain %s, got:\n%s", want, got)
@@ -131,7 +131,7 @@ func TestMusicXMLAccidentalAndNoKey(t *testing.T) {
 		t.Errorf("output should contain alter -1 for Eb, got:\n%s", got)
 	}
 	// コードネームは調に依存しないため、調が不明でも表示する（#56）
-	if !strings.Contains(got, `<words default-y="-100">Cm</words>`) {
+	if !strings.Contains(got, `<words default-y="-100" font-style="normal">Cm</words>`) {
 		t.Errorf("output without key should contain chord name Cm, got:\n%s", got)
 	}
 }

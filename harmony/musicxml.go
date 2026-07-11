@@ -81,9 +81,11 @@ type mxlDirection struct {
 
 // mxlWords は direction の文字列。default-y で縦位置を固定する
 // （指定しないとVerovioの自動配置によりバス音符の高さに追従してしまう）。
+// font-style を指定しないとVerovioは斜体で描画する。
 type mxlWords struct {
-	DefaultY int    `xml:"default-y,attr"`
-	Value    string `xml:",chardata"`
+	DefaultY  int    `xml:"default-y,attr"`
+	FontStyle string `xml:"font-style,attr"`
+	Value     string `xml:",chardata"`
 }
 
 // chordNameY はコードネームの縦位置（ヘ音記号譜の上第1線基準・tenths単位）。
@@ -321,7 +323,7 @@ func (r *Report) MusicXML() ([]byte, error) {
 				if voice == 1 && s.chordIdx >= 0 && !s.tieStop {
 					measure.Items = append(measure.Items, &mxlDirection{
 						Placement: "below",
-						Words:     mxlWords{DefaultY: chordNameY, Value: r.Chords[s.chordIdx].Name},
+						Words:     mxlWords{DefaultY: chordNameY, FontStyle: "normal", Value: r.Chords[s.chordIdx].Name},
 						Staff:     2,
 					})
 				}

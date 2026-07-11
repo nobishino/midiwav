@@ -29,7 +29,7 @@
       </attributes>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Ebm</words>
+          <words default-y="-100" font-style="normal">Ebm</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -47,7 +47,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Ebm/Gb</words>
+          <words default-y="-100" font-style="normal">Ebm/Gb</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -65,7 +65,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Fm7-5</words>
+          <words default-y="-100" font-style="normal">Fm7-5</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -83,7 +83,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Abdim7</words>
+          <words default-y="-100" font-style="normal">Abdim7</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -254,7 +254,7 @@
     <measure number="2">
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Ebm/Gb</words>
+          <words default-y="-100" font-style="normal">Ebm/Gb</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -272,7 +272,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Ebm</words>
+          <words default-y="-100" font-style="normal">Ebm</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -290,7 +290,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Abm/Cb</words>
+          <words default-y="-100" font-style="normal">Abm/Cb</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -308,7 +308,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Abdim7</words>
+          <words default-y="-100" font-style="normal">Abdim7</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -480,7 +480,7 @@
     <measure number="3">
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Ebm/Gb</words>
+          <words default-y="-100" font-style="normal">Ebm/Gb</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -498,7 +498,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Abm7/Gb</words>
+          <words default-y="-100" font-style="normal">Abm7/Gb</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -516,7 +516,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Fdim7</words>
+          <words default-y="-100" font-style="normal">Fdim7</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -534,7 +534,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Ebm/Gb</words>
+          <words default-y="-100" font-style="normal">Ebm/Gb</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -706,7 +706,7 @@
     <measure number="4">
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Fm7-5/Ab</words>
+          <words default-y="-100" font-style="normal">Fm7-5/Ab</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -724,7 +724,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">F7/A</words>
+          <words default-y="-100" font-style="normal">F7/A</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -742,7 +742,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Bb</words>
+          <words default-y="-100" font-style="normal">Bb</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -876,7 +876,7 @@
     <measure number="5">
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Cb</words>
+          <words default-y="-100" font-style="normal">Cb</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -894,7 +894,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Fm7-5</words>
+          <words default-y="-100" font-style="normal">Fm7-5</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -912,7 +912,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Abdim7</words>
+          <words default-y="-100" font-style="normal">Abdim7</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -930,7 +930,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Ebm/Gb</words>
+          <words default-y="-100" font-style="normal">Ebm/Gb</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -1101,7 +1101,7 @@
     <measure number="6">
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Cb</words>
+          <words default-y="-100" font-style="normal">Cb</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -1119,7 +1119,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Cb7</words>
+          <words default-y="-100" font-style="normal">Cb7</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -1137,7 +1137,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Bb</words>
+          <words default-y="-100" font-style="normal">Bb</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -1273,7 +1273,7 @@
     <measure number="7">
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Ebm</words>
+          <words default-y="-100" font-style="normal">Ebm</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -1291,7 +1291,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Fdim/Ab</words>
+          <words default-y="-100" font-style="normal">Fdim/Ab</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -1308,7 +1308,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Bb7</words>
+          <words default-y="-100" font-style="normal">Bb7</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -1326,7 +1326,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Cb</words>
+          <words default-y="-100" font-style="normal">Cb</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -1498,7 +1498,7 @@
     <measure number="8">
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Fm7-5</words>
+          <words default-y="-100" font-style="normal">Fm7-5</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -1516,7 +1516,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Bb7</words>
+          <words default-y="-100" font-style="normal">Bb7</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -1534,7 +1534,7 @@
       </note>
       <direction placement="below">
         <direction-type>
-          <words default-y="-100">Ebm</words>
+          <words default-y="-100" font-style="normal">Ebm</words>
         </direction-type>
         <staff>2</staff>
       </direction>
