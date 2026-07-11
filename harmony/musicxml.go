@@ -75,9 +75,20 @@ type mxlClef struct {
 type mxlDirection struct {
 	XMLName   xml.Name `xml:"direction"`
 	Placement string   `xml:"placement,attr"`
-	Words     string   `xml:"direction-type>words"`
+	Words     mxlWords `xml:"direction-type>words"`
 	Staff     int      `xml:"staff"`
 }
+
+// mxlWords は direction の文字列。default-y で縦位置を固定する
+// （指定しないとVerovioの自動配置によりバス音符の高さに追従してしまう）。
+type mxlWords struct {
+	DefaultY int    `xml:"default-y,attr"`
+	Value    string `xml:",chardata"`
+}
+
+// chordNameY はコードネームの縦位置（ヘ音記号譜の上第1線基準・tenths単位）。
+// バスの最低音 F2 の全音符と重ならない値（#56）。
+const chordNameY = -100
 
 // mxlNote の要素順はMusicXMLのDTDに従う:
 // rest/pitch, duration, tie, voice, type, dot, accidental, stem, staff, notations
@@ -305,16 +316,14 @@ func (r *Report) MusicXML() ([]byte, error) {
 			}
 			staff, stem := voiceStaffStem(voice)
 			for si, s := range msegs {
-				// 和音記号は最初の声部の、和音が始まる位置にだけ付ける。
-				// 楽譜では転回位置などを省いた短い表記を使う（#47）
+				// コードネームは最初の声部の、和音が始まる位置にだけ付ける（#56）。
+				// 調に依存せず判定できるため、調が不明でも表示する
 				if voice == 1 && s.chordIdx >= 0 && !s.tieStop {
-					if sym := r.Chords[s.chordIdx].ShortSymbol; sym != "" {
-						measure.Items = append(measure.Items, &mxlDirection{
-							Placement: "below",
-							Words:     sym,
-							Staff:     2,
-						})
-					}
+					measure.Items = append(measure.Items, &mxlDirection{
+						Placement: "below",
+						Words:     mxlWords{DefaultY: chordNameY, Value: r.Chords[s.chordIdx].Name},
+						Staff:     2,
+					})
 				}
 				note := &mxlNote{Duration: s.dur, Voice: voice, Staff: staff}
 				if s.chordIdx < 0 {

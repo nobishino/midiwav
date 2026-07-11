@@ -68,44 +68,6 @@ func TestChordSymbolEsMoll(t *testing.T) {
 	}
 }
 
-// shortSymbol は楽譜用の短い和音記号を返すテストヘルパー。
-func shortSymbol(notes [4]uint8, ts []chordTemplate) string {
-	a, ok := analyzeChord(notes, ts)
-	if !ok {
-		return "?"
-	}
-	return a.ShortString()
-}
-
-func TestChordShortSymbol(t *testing.T) {
-	cdur := templatesFor(t, "c-dur.mid")
-	esmoll := templatesFor(t, "es-moll.mid")
-	tests := []struct {
-		name  string
-		notes [4]uint8 // S A T B
-		ts    []chordTemplate
-		want  string
-	}{
-		{"転回位置は書かない", [4]uint8{72, 67, 60, 52}, cdur, "I"},            // I 第1転回位置
-		{"7は下付き", [4]uint8{74, 71, 67, 53}, cdur, "V₇"},               // V7 第3転回位置
-		{"根音省略は r-", [4]uint8{74, 65, 62, 59}, cdur, "V₇(r-)"},        // V7 根省
-		{"V9根省", [4]uint8{69, 65, 62, 59}, cdur, "V₉(r-)"},            // V9 根省
-		{"II7", [4]uint8{72, 69, 65, 50}, cdur, "II₇"},                // II7
-		{"借用は V-", [4]uint8{74, 69, 66, 50}, cdur, "V-V"},             // V調のV
-		{"借用の七", [4]uint8{72, 69, 66, 50}, cdur, "V-V₇"},              // V調のV7
-		{"借用の九・根省", [4]uint8{76, 72, 69, 54}, cdur, "V-V₉(r-)"},       // V調のV9 根省
-		{"増六(V7型)", [4]uint8{75, 69, 63, 59}, esmoll, "V-V₇(-5, r-)"}, // 増六 第9音なし
-		{"増六(V9型)", [4]uint8{78, 69, 63, 59}, esmoll, "V-V₉(-5, r-)"}, // 増六 第9音あり
-		{"ドリアのIV", [4]uint8{66, 63, 60, 44}, esmoll, "+IV₇"},          // +IV7
-		{"判定不能", [4]uint8{72, 71, 61, 60}, cdur, "?"},                 // 不一致
-	}
-	for _, tt := range tests {
-		if got := shortSymbol(tt.notes, tt.ts); got != tt.want {
-			t.Errorf("%s: shortSymbol(%v) = %s, want %s", tt.name, tt.notes, got, tt.want)
-		}
-	}
-}
-
 func TestChordSymbolAMollDiminishedII(t *testing.T) {
 	// a-moll の II（減三和音）は第1転回位置で頻出
 	ts := templatesFor(t, "a-moll.mid")

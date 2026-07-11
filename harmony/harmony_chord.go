@@ -160,28 +160,6 @@ func (a chordAnalysis) String() string {
 	return a.template.label + "(" + strings.Join(parts, "・") + ")"
 }
 
-var subscriptDigits = strings.NewReplacer("7", "₇", "9", "₉")
-
-// ShortString は楽譜表示用の短い和音記号を返す（#47）。
-// 転回位置は書かない（楽譜ではバス音が見えるため）。7・9は下付き数字とし、
-// 借用の「V調の」は「V-」、根音省略は (r-)、第5音下方変位（増六）は (-5)、
-// 両方に該当する場合は (-5, r-) と表記する。
-func (a chordAnalysis) ShortString() string {
-	label := strings.ReplaceAll(a.template.label, "V調の", "V-")
-	label = subscriptDigits.Replace(label)
-	var mods []string
-	if a.template.augSixth {
-		mods = append(mods, "-5")
-	}
-	if a.template.rootOmitted {
-		mods = append(mods, "r-")
-	}
-	if len(mods) > 0 {
-		label += "(" + strings.Join(mods, ", ") + ")"
-	}
-	return label
-}
-
 // matchTemplate は実施のピッチクラス集合をテンプレートと照合する。
 // 完全形が一致しなければ第5音の省略形も試す。増六の和音は第5音自体が
 // 特徴音（変位音）であり、第9音の有無で別テンプレートを用意しているため
