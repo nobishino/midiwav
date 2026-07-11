@@ -29,7 +29,7 @@
       </attributes>
       <direction placement="below">
         <direction-type>
-          <words>IV</words>
+          <words default-y="-100">F</words>
         </direction-type>
         <staff>2</staff>
       </direction>
@@ -90,7 +90,7 @@
     <measure number="2">
       <direction placement="below">
         <direction-type>
-          <words>V</words>
+          <words default-y="-100">G</words>
         </direction-type>
         <staff>2</staff>
       </direction>

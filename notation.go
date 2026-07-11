@@ -19,8 +19,10 @@ import (
 
 // renderSVG は MusicXML を Verovio でSVGに変換する。
 // 全小節が1ページに収まるよう、ページ高さを大きく取って内容に合わせて切り詰める。
+// Verovioは音価だけで水平方向の間隔を決め、コードネーム（direction/words）の
+// 幅を考慮しないため、隣り合う長いコードネームが重ならないよう間隔を広げる（#56）。
 func renderSVG(verovioPath string, musicXML []byte) ([]byte, error) {
-	cmd := exec.Command(verovioPath, "--page-height", "60000", "--adjust-page-height", "-o", "-", "-")
+	cmd := exec.Command(verovioPath, "--spacing-linear", "0.5", "--page-height", "60000", "--adjust-page-height", "-o", "-", "-")
 	cmd.Stdin = bytes.NewReader(musicXML)
 	var out, errBuf bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errBuf
